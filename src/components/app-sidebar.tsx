@@ -4,24 +4,37 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Building2,
+  ChartColumn,
+  FileText,
+  Images,
   LayoutDashboard,
+  MapPin,
   Package,
+  Radio,
   Settings,
   ShoppingBag,
   Store,
   Users,
   Warehouse,
 } from "lucide-react";
+import { BRANCHES_ENABLED } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Inicio", icon: LayoutDashboard, exact: true },
-  { href: "/catalogo", label: "Catálogo", icon: Store },
   { href: "/productos", label: "Productos", icon: Package },
   { href: "/clientes", label: "Clientes", icon: Users },
+  { href: "/presupuestos", label: "Presupuestos", icon: FileText },
+  { href: "/biblioteca", label: "Biblioteca", icon: Images },
   { href: "/pedidos", label: "Pedidos", icon: Warehouse },
   { href: "/mayorista", label: "Mayorista", icon: Building2 },
   { href: "/pos", label: "POS", icon: ShoppingBag },
+  { href: "/reportes", label: "Reportes", icon: ChartColumn },
+  { href: "/comercios", label: "Comercios", icon: Store },
+  ...(BRANCHES_ENABLED
+    ? [{ href: "/sucursales", label: "Sucursales", icon: MapPin }]
+    : []),
+  { href: "/canales", label: "Canales", icon: Radio },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 export function AppSidebar({
@@ -82,7 +95,7 @@ export function AppSidebar({
           })}
         </nav>
         <div className="border-t border-white/10 px-4 py-4 text-xs text-sand/50">
-          Gold template · datos en memoria
+          Retail 360 · WooCommerce · ML
         </div>
       </aside>
     </>

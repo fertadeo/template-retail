@@ -1,110 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  getDefaultPriceListId,
-  listPriceLists,
-  setDefaultPriceList,
-  upsertPriceList,
-} from "@/lib/store";
-import type { PriceList } from "@/lib/types";
-import { useRetailQuery } from "@/lib/use-retail-query";
+import { AccountsPanel } from "@/components/accounts-panel";
+import { PriceListsPanel } from "@/components/price-lists-panel";
+import { cn } from "@/lib/utils";
+
+type SettingsTab = "precios" | "cuentas";
 
 export function SettingsPanel() {
-  const {
-    data,
-    loading,
-    error: loadError,
-    reload,
-  } = useRetailQuery(
-    () => Promise.all([listPriceLists(), getDefaultPriceListId()]),
-    []
-  );
-  const lists = data?.[0] ?? [];
-  const defaultId = data?.[1] ?? "";
+  const [tab, setTab] = useState<SettingsTab>("precios");
 
-  const [nombre, setNombre] = useState("");
-  const [codigo, setCodigo] = useState("");
-  const [editing, setEditing] = useState<PriceList | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  function startCreate() {
-    setEditing(null);
-    setNombre("");
-    setCodigo("");
-    setError(null);
-    setMessage(null);
-  }
-
-  function startEdit(pl: PriceList) {
-    setEditing(pl);
-    setNombre(pl.nombre);
-    setCodigo(pl.codigo);
-    setError(null);
-    setMessage(null);
-  }
-
-  async function save() {
-    setError(null);
-    setMessage(null);
-    setSaving(true);
-    try {
-      await upsertPriceList({
-        id: editing?.id,
-        nombre,
-        codigo: codigo || undefined,
-        activa: editing?.activa ?? true,
-        esDefault: editing?.esDefault ?? false,
-      });
-      setMessage(editing ? "Lista actualizada." : "Lista creada.");
-      setEditing(null);
-      setNombre("");
-      setCodigo("");
-      reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function toggleActive(pl: PriceList) {
-    setError(null);
-    setSaving(true);
-    try {
-      await upsertPriceList({
-        id: pl.id,
-        nombre: pl.nombre,
-        codigo: pl.codigo,
-        activa: !pl.activa,
-        esDefault: pl.esDefault,
-      });
-      reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo cambiar.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function makeDefault(pl: PriceList) {
-    setError(null);
-    setSaving(true);
-    try {
-      await setDefaultPriceList(pl.id);
-      setMessage(`Default: ${pl.nombre}`);
-      reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo definir default.");
-    } finally {
-      setSaving(false);
-    }
-  }
+  const tabs: Array<{ id: SettingsTab; label: string }> = [
+    { id: "precios", label: "Listas de precios" },
+    { id: "cuentas", label: "Centro de cuentas" },
+  ];
 
   return (
     <div className="space-y-8">
@@ -116,145 +25,40 @@ export function SettingsPanel() {
           Configuración
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Listas de precios diferenciadas (minorista, mayorista u otras que
-          crees). Cada cliente puede tener una lista; el POS y el catálogo usan
-          la default si no hay cliente.
+          Listas de precios del comercio y centro de cuentas con roles
+          (vendedor, administrador, visitante y superadmin).
         </p>
       </div>
 
-      <section className="space-y-4 rounded-xl bg-card/90 p-5 ring-1 ring-border/70 sm:p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="font-display text-lg font-medium text-charcoal">
-              Listas de precios
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Default actual:{" "}
-              <span className="font-medium text-foreground">
-                {lists.find((l) => l.id === defaultId)?.nombre ?? "—"}
-              </span>
-            </p>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={startCreate}>
-            Nueva lista
-          </Button>
-        </div>
-
-        <ul className="divide-y divide-border/60 overflow-hidden rounded-lg ring-1 ring-border/60">
-          {loading ? (
-            <li className="px-4 py-3 text-sm text-muted-foreground">Cargando listas…</li>
-          ) : loadError ? (
-            <li className="px-4 py-3 text-sm text-destructive">{loadError}</li>
-          ) : null}
-          {lists.map((pl) => (
-            <li
-              key={pl.id}
-              className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+      <div
+        role="tablist"
+        aria-label="Secciones de configuración"
+        className="inline-flex rounded-lg bg-secondary/70 p-1 ring-1 ring-border/60"
+      >
+        {tabs.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
+                active
+                  ? "bg-card text-charcoal shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              <div>
-                <p className="font-medium text-foreground">
-                  {pl.nombre}
-                  {pl.esDefault ? (
-                    <span className="ml-2 rounded bg-teal-soft px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-teal">
-                      default
-                    </span>
-                  ) : null}
-                  {!pl.activa ? (
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      (inactiva)
-                    </span>
-                  ) : null}
-                </p>
-                <p className="font-mono text-xs text-muted-foreground">
-                  {pl.codigo}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => startEdit(pl)}
-                >
-                  Editar
-                </Button>
-                {!pl.esDefault ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={!pl.activa}
-                    onClick={() => void makeDefault(pl)}
-                  >
-                    Hacer default
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={saving}
-                  onClick={() => void toggleActive(pl)}
-                >
-                  {pl.activa ? "Desactivar" : "Activar"}
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
 
-        <form
-          className="space-y-3 border-t border-border/60 pt-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save();
-          }}
-        >
-          <h3 className="text-sm font-medium">
-            {editing ? `Editar «${editing.nombre}»` : "Crear lista"}
-          </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="pl-nombre">Nombre</Label>
-              <Input
-                id="pl-nombre"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej. Distribuidor"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pl-codigo">Código</Label>
-              <Input
-                id="pl-codigo"
-                value={codigo}
-                onChange={(e) => setCodigo(e.target.value)}
-                placeholder="Se genera del nombre si lo dejás vacío"
-                className="font-mono text-sm"
-              />
-            </div>
-          </div>
-          {error ? (
-            <p className="text-sm text-destructive">{error}</p>
-          ) : null}
-          {message ? (
-            <p className="text-sm text-teal">{message}</p>
-          ) : null}
-          <div className="flex gap-2">
-            <Button type="submit" disabled={loading || saving}>
-              {saving
-                ? "Guardando…"
-                : editing
-                  ? "Guardar cambios"
-                  : "Crear lista"}
-            </Button>
-            {editing ? (
-              <Button type="button" variant="outline" onClick={startCreate}>
-                Cancelar
-              </Button>
-            ) : null}
-          </div>
-        </form>
+      <section className="space-y-4 rounded-xl bg-card/90 p-5 ring-1 ring-border/70 sm:p-6">
+        {tab === "precios" ? <PriceListsPanel /> : <AccountsPanel />}
       </section>
     </div>
   );

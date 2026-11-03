@@ -44,46 +44,49 @@ export function barcodeSvgDataUrl(value: string, width = 2, height = 64): string
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
 }
 
+export type LabelPrintMode = "barcode" | "qr";
+
 export type LabelPrintOptions = {
-  /** Incluir QR además del código de barras */
-  includeQr?: boolean;
+  /** barcode y QR se imprimen en trabajos separados. */
+  mode: LabelPrintMode;
   copies?: number;
 };
 
 /**
- * Etiqueta térmica 80 mm: nombre, SKU, precio, barcode (+ QR opcional).
+ * Etiqueta térmica 80 mm: nombre, SKU, precio + barcode **o** QR (por separado).
  * Usa iframe oculto (sin pop-up).
  */
 export async function printProductLabel(
   product: Product,
-  options: LabelPrintOptions = {}
+  options: LabelPrintOptions
 ): Promise<void> {
-  const includeQr = options.includeQr !== false;
+  const mode = options.mode;
   const copies = Math.max(1, Math.min(20, options.copies ?? 1));
   const code = productBarcodeValue(product);
-  const barcodeSrc = barcodeSvgDataUrl(code, 2, 56);
-  const qrSrc = includeQr
-    ? await qrDataUrl(productQrPayload(product), 120)
-    : "";
+  const title = mode === "barcode" ? `Barras ${code}` : `QR ${code}`;
+
+  let mediaBlock = "";
+  if (mode === "barcode") {
+    const barcodeSrc = barcodeSvgDataUrl(code, 2, 56);
+    mediaBlock = `<img class="barcode" src="${barcodeSrc}" alt="barcode ${esc(code)}" />`;
+  } else {
+    const qrSrc = await qrDataUrl(productQrPayload(product), 140);
+    mediaBlock = `<div class="qr-wrap"><img class="qr" src="${qrSrc}" alt="qr" /><div class="qr-hint">Escanear ficha</div></div>`;
+  }
 
   const labelBody = `
     <div class="label">
       <div class="brand">${esc(AURIX_BRAND.name)}</div>
       <div class="name">${esc(product.nombre)}</div>
       <div class="meta">${esc(product.sku)} · ${esc(formatMxn(product.precio))}</div>
-      <img class="barcode" src="${barcodeSrc}" alt="barcode ${esc(code)}" />
-      ${
-        includeQr
-          ? `<div class="qr-wrap"><img class="qr" src="${qrSrc}" alt="qr" /><div class="qr-hint">Escanear ficha</div></div>`
-          : ""
-      }
+      ${mediaBlock}
     </div>`;
 
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Etiqueta ${esc(code)}</title>
+  <title>${esc(title)}</title>
   <style>
     @page { size: 80mm auto; margin: 2mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -124,8 +127,8 @@ export async function printProductLabel(
       height: auto;
       margin: 6px auto 2px;
     }
-    .qr-wrap { margin-top: 6px; }
-    .qr { width: 28mm; height: 28mm; }
+    .qr-wrap { margin-top: 8px; }
+    .qr { width: 32mm; height: 32mm; }
     .qr-hint { font-size: 9px; margin-top: 2px; }
   </style>
 </head>
@@ -134,7 +137,7 @@ export async function printProductLabel(
 </body>
 </html>`;
 
-  printHtmlIframe(html, `Etiqueta ${code}`);
+  printHtmlIframe(html, title);
 }
 
 function esc(s: string): string {

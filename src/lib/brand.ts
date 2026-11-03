@@ -4,7 +4,7 @@
  */
 export const AURIX_BRAND = {
   name: "Aurix",
-  tagline: "Retail · plantilla gold",
+  tagline: "Retail 360",
   legalName: "Aurix ERP — Fenec Studio",
   color: {
     charcoal: "#1f1c19",

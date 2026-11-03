@@ -1,22 +1,52 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { QrCode } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Pencil } from "lucide-react";
+import { ConfirmModal } from "@/components/confirm-modal";
+import {
+  ProductImagesEditor,
+  type PendingFile,
+} from "@/components/product-images-editor";
 import { ProductDetailModal } from "@/components/product-detail-modal";
+import { RowActionsMenu } from "@/components/row-actions-menu";
+import { ProductHealthDot } from "@/components/status-dot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { listPriceLists, listProducts, upsertProduct } from "@/lib/store";
+import {
+  HEALTH_FILTERS,
+  healthDotClass,
+  productHealth,
+  type ProductHealthLevel,
+} from "@/lib/product-health";
+import {
+  getProduct,
+  listPriceLists,
+  listProducts,
+  pushMeliProduct,
+  pushWooProduct,
+  uploadProductImage,
+  upsertProduct,
+  upsertProductChannelLink,
+  usingRemoteApi,
+} from "@/lib/store";
 import { useRetailQuery } from "@/lib/use-retail-query";
 import {
   CATEGORY_LABELS,
+  productImageSrc,
   type Product,
   type ProductCategory,
 } from "@/lib/types";
-import { formatMxn } from "@/lib/utils";
+import { cn, formatMxn } from "@/lib/utils";
 
 const CATS = Object.keys(CATEGORY_LABELS) as ProductCategory[];
+
+type SortKey =
+  | "nombre"
+  | "recent"
+  | "oldest"
+  | "sold_desc"
+  | "sold_asc";
 
 export function ProductsPanel() {
   const {
@@ -32,6 +62,89 @@ export function ProductsPanel() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<Product | null>(null);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [syncBusy, setSyncBusy] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<"" | ProductCategory>("");
+  const [healthFilter, setHealthFilter] = useState<ProductHealthLevel | "all">(
+    "all"
+  );
+  const [sort, setSort] = useState<SortKey>("nombre");
+
+  const healthCounts = useMemo(() => {
+    const counts = { ready: 0, attention: 0, critical: 0, all: 0 };
+    for (const p of products ?? []) {
+      counts.all += 1;
+      counts[productHealth(p).level] += 1;
+    }
+    return counts;
+  }, [products]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let rows = [...(products ?? [])];
+    if (q) {
+      rows = rows.filter(
+        (p) =>
+          p.nombre.toLowerCase().includes(q) ||
+          p.sku.toLowerCase().includes(q)
+      );
+    }
+    if (category) {
+      rows = rows.filter((p) => p.categoria === category);
+    }
+    if (healthFilter !== "all") {
+      rows = rows.filter((p) => productHealth(p).level === healthFilter);
+    }
+    rows.sort((a, b) => {
+      switch (sort) {
+        case "recent":
+          return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+        case "oldest":
+          return (a.createdAt ?? "").localeCompare(b.createdAt ?? "");
+        case "sold_desc":
+          return (b.unitsSold ?? 0) - (a.unitsSold ?? 0);
+        case "sold_asc":
+          return (a.unitsSold ?? 0) - (b.unitsSold ?? 0);
+        default:
+          return a.nombre.localeCompare(b.nombre, "es");
+      }
+    });
+    return rows;
+  }, [products, query, category, healthFilter, sort]);
+
+  async function openDetail(p: Product) {
+    setDetail(p);
+    const full = await getProduct(p.id);
+    if (full) setDetail(full);
+  }
+
+  async function syncChannel(
+    productId: string,
+    channel: "woocommerce" | "mercadolibre"
+  ) {
+    if (!usingRemoteApi()) {
+      setSyncMsg("Sync requiere API remota (NEXT_PUBLIC_API_URL).");
+      return;
+    }
+    const key = `${channel}:${productId}`;
+    setSyncBusy(key);
+    setSyncMsg(null);
+    try {
+      if (channel === "woocommerce") {
+        const r = await pushWooProduct(productId, "both");
+        setSyncMsg(`WC #${r.externalId}: stock ${r.stock} · $${r.price}`);
+      } else {
+        const r = await pushMeliProduct(productId, "both");
+        setSyncMsg(`ML ${r.externalId}: stock ${r.stock} · $${r.price}`);
+      }
+      reload();
+    } catch (e) {
+      setSyncMsg(e instanceof Error ? e.message : "Error de sync.");
+    } finally {
+      setSyncBusy(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -44,7 +157,8 @@ export function ProductsPanel() {
             Productos
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Alta, ficha con QR/barcode e impresión térmica de etiquetas.
+            Alta, ficha QR y sync a WooCommerce / Mercado Libre. El semáforo
+            marca si falta foto, precio u otros datos.
           </p>
         </div>
         <Button
@@ -59,6 +173,99 @@ export function ProductsPanel() {
         >
           Cargar producto
         </Button>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div
+          role="tablist"
+          aria-label="Salubridad"
+          className="inline-flex flex-wrap rounded-lg bg-secondary/70 p-1 ring-1 ring-border/60"
+        >
+          {HEALTH_FILTERS.map((t) => {
+            const active = healthFilter === t.id;
+            const count =
+              t.id === "all" ? healthCounts.all : healthCounts[t.id];
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setHealthFilter(t.id)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm",
+                  active
+                    ? "bg-card text-charcoal shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t.id !== "all" ? (
+                  <span
+                    className={cn(
+                      "size-2 rounded-full",
+                      healthDotClass(t.id)
+                    )}
+                    aria-hidden
+                  />
+                ) : null}
+                {t.label}{" "}
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    active ? "text-teal" : "text-muted-foreground"
+                  )}
+                >
+                  ({count})
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1">
+            <Label htmlFor="prod-q">Buscar</Label>
+            <Input
+              id="prod-q"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Nombre o SKU"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="prod-cat">Categoría</Label>
+            <select
+              id="prod-cat"
+              className="flex h-10 w-full rounded-lg border border-border bg-card px-3 text-sm"
+              value={category}
+              onChange={(e) =>
+                setCategory(e.target.value as "" | ProductCategory)
+              }
+            >
+              <option value="">Todas</option>
+              {CATS.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1 sm:col-span-2 lg:col-span-2">
+            <Label htmlFor="prod-sort">Orden</Label>
+            <select
+              id="prod-sort"
+              className="flex h-10 w-full rounded-lg border border-border bg-card px-3 text-sm"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+            >
+              <option value="nombre">Nombre A–Z</option>
+              <option value="recent">Más recientes</option>
+              <option value="oldest">Más antiguos</option>
+              <option value="sold_desc">Más vendidos</option>
+              <option value="sold_asc">Menos vendidos</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {creating || editing ? (
@@ -88,6 +295,12 @@ export function ProductsPanel() {
         />
       ) : null}
 
+      {syncMsg ? (
+        <p className="rounded-lg bg-tealSoft/60 px-3 py-2 text-sm text-charcoal">
+          {syncMsg}
+        </p>
+      ) : null}
+
       <div className="overflow-hidden rounded-xl bg-card/90 ring-1 ring-border/70">
         {loading ? (
           <p className="px-4 py-6 text-sm text-muted-foreground">Cargando productos…</p>
@@ -99,84 +312,144 @@ export function ProductsPanel() {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border/60 text-xs uppercase tracking-[0.1em] text-muted-foreground">
             <tr>
+              <th className="px-4 py-3 font-medium"> </th>
               <th className="px-4 py-3 font-medium">SKU</th>
               <th className="px-4 py-3 font-medium">Nombre</th>
+              <th className="hidden px-4 py-3 font-medium lg:table-cell">
+                Estado
+              </th>
               <th className="hidden px-4 py-3 font-medium sm:table-cell">
                 Categoría
               </th>
               <th className="px-4 py-3 font-medium">Default</th>
-              <th className="hidden px-4 py-3 font-medium md:table-cell">
-                Listas
+              <th className="hidden px-4 py-3 font-medium xl:table-cell">
+                Vendidos
               </th>
               <th className="px-4 py-3 font-medium">Stock</th>
               <th className="px-4 py-3 font-medium" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
-            {(products ?? []).map((p) => (
-              <tr
-                key={p.id}
-                className={!p.activo ? "opacity-50" : undefined}
-              >
-                <td className="px-4 py-3 font-mono text-xs">{p.sku}</td>
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    className="text-left font-medium hover:text-teal hover:underline"
-                    onClick={() => setDetail(p)}
-                  >
-                    {p.nombre}
-                  </button>
-                </td>
-                <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
-                  {CATEGORY_LABELS[p.categoria]}
-                </td>
-                <td className="px-4 py-3 tabular-nums">{formatMxn(p.precio)}</td>
-                <td className="hidden px-4 py-3 text-xs text-muted-foreground md:table-cell">
-                  {(lists ?? [])
-                    .map(
-                      (pl) =>
-                        `${pl.codigo} ${formatMxn(p.precios[pl.id] ?? p.precio)}`
-                    )
-                    .join(" · ")}
-                </td>
-                <td className="px-4 py-3 tabular-nums">{p.stock}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-3">
+            {filtered.map((p) => {
+              const health = productHealth(p);
+              return (
+                <tr
+                  key={p.id}
+                  className={!p.activo ? "opacity-50" : undefined}
+                >
+                  <td className="px-4 py-3">
+                    <div className="size-10 overflow-hidden rounded-lg bg-muted/60 ring-1 ring-border/60">
+                      {productImageSrc(p.imagenPrincipal) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={productImageSrc(p.imagenPrincipal)!}
+                          alt=""
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-[9px] text-muted-foreground">
+                          —
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs">{p.sku}</td>
+                  <td className="px-4 py-3">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 text-sm font-medium text-teal hover:underline"
-                      onClick={() => setDetail(p)}
+                      className="text-left font-medium hover:text-teal hover:underline"
+                      onClick={() => void openDetail(p)}
                     >
-                      <QrCode className="size-3.5" />
-                      Ficha
+                      {p.nombre}
                     </button>
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
-                      onClick={() => {
-                        setEditing(p);
-                        setCreating(false);
-                        setDetail(null);
-                      }}
-                    >
-                      Editar
-                    </button>
-                  </div>
+                    <div className="mt-1 lg:hidden">
+                      <ProductHealthDot health={health} />
+                    </div>
+                  </td>
+                  <td className="hidden px-4 py-3 lg:table-cell">
+                    <ProductHealthDot health={health} />
+                  </td>
+                  <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
+                    {CATEGORY_LABELS[p.categoria]}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums">
+                    {formatMxn(p.precio)}
+                  </td>
+                  <td className="hidden px-4 py-3 tabular-nums text-muted-foreground xl:table-cell">
+                    {p.unitsSold ?? 0}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums">{p.stock}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-0.5">
+                      <RowActionsMenu
+                        label={`Acciones de ${p.nombre}`}
+                        items={[
+                          {
+                            id: "ficha",
+                            label: "Ver ficha",
+                            tone: "teal",
+                            onSelect: () => void openDetail(p),
+                          },
+                          {
+                            id: "wc",
+                            label:
+                              syncBusy === `woocommerce:${p.id}`
+                                ? "Sincronizando WC…"
+                                : "Empujar a WooCommerce",
+                            tone: "teal",
+                            disabled: Boolean(syncBusy),
+                            busy: syncBusy === `woocommerce:${p.id}`,
+                            onSelect: () =>
+                              void syncChannel(p.id, "woocommerce"),
+                          },
+                          {
+                            id: "ml",
+                            label:
+                              syncBusy === `mercadolibre:${p.id}`
+                                ? "Sincronizando ML…"
+                                : "Empujar a Mercado Libre",
+                            tone: "amber",
+                            disabled: Boolean(syncBusy),
+                            busy: syncBusy === `mercadolibre:${p.id}`,
+                            onSelect: () =>
+                              void syncChannel(p.id, "mercadolibre"),
+                          },
+                        ]}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-foreground"
+                        aria-label={`Editar ${p.nombre}`}
+                        title="Editar"
+                        onClick={() => {
+                          setEditing(p);
+                          setCreating(false);
+                          setDetail(null);
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {!loading && !error && filtered.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={9}
+                  className="px-4 py-6 text-sm text-muted-foreground"
+                >
+                  No hay productos con esos filtros.
                 </td>
               </tr>
-            ))}
+            ) : null}
           </tbody>
         </table>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Tip: el{" "}
-        <Link href="/catalogo" className="font-medium text-teal hover:underline">
-          catálogo
-        </Link>{" "}
-        solo muestra productos activos.
-      </p>
     </div>
   );
 }
@@ -227,8 +500,24 @@ function ProductEditor({
   const [stock, setStock] = useState(String(initial?.stock ?? 0));
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "");
   const [activo, setActivo] = useState(initial?.activo ?? true);
+  const [wooId, setWooId] = useState(
+    initial?.channelLinks?.find((l) => l.channel === "woocommerce")
+      ?.externalId ?? ""
+  );
+  const [meliId, setMeliId] = useState(
+    initial?.channelLinks?.find((l) => l.channel === "mercadolibre")
+      ?.externalId ?? ""
+  );
+  const [pendingImages, setPendingImages] = useState<PendingFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pendingSyncId, setPendingSyncId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const hadWooLink = Boolean(
+    initial?.channelLinks?.find((l) => l.channel === "woocommerce")
+      ?.externalId
+  );
 
   async function save() {
     setError(null);
@@ -239,7 +528,7 @@ function ProductEditor({
         preciosNum[pl.id] = Number(precios[pl.id]) || 0;
       }
       const defaultList = lists?.find((l) => l.esDefault) ?? lists?.[0];
-      await upsertProduct({
+      const saved = await upsertProduct({
         id: initial?.id,
         sku,
         nombre,
@@ -251,7 +540,37 @@ function ProductEditor({
         descripcion,
         activo,
       });
-      onSaved();
+      if (wooId.trim()) {
+        await upsertProductChannelLink(saved.id, "woocommerce", {
+          externalId: wooId.trim(),
+          externalSku: sku,
+        });
+      }
+      if (meliId.trim()) {
+        await upsertProductChannelLink(saved.id, "mercadolibre", {
+          externalId: meliId.trim(),
+          externalSku: sku,
+        });
+      }
+      for (const pending of pendingImages) {
+        await uploadProductImage(saved.id, {
+          filename: pending.filename,
+          mime: pending.mime,
+          sizeBytes: pending.sizeBytes,
+          dataUrl: pending.dataUrl,
+          isPrimary: pending.asPrimary,
+          title: pending.filename,
+        });
+      }
+      const canOfferWooSync =
+        Boolean(initial) &&
+        usingRemoteApi() &&
+        (Boolean(wooId.trim()) || hadWooLink);
+      if (canOfferWooSync) {
+        setPendingSyncId(saved.id);
+      } else {
+        onSaved();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar.");
     } finally {
@@ -259,7 +578,33 @@ function ProductEditor({
     }
   }
 
+  async function confirmSyncToWeb() {
+    if (!pendingSyncId) return;
+    setSyncing(true);
+    setError(null);
+    try {
+      await pushWooProduct(pendingSyncId, "both");
+      setPendingSyncId(null);
+      onSaved();
+    } catch (e) {
+      setPendingSyncId(null);
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Guardado en Aurix, pero falló el sync con el sitio web."
+      );
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function skipSyncToWeb() {
+    setPendingSyncId(null);
+    onSaved();
+  }
+
   return (
+    <>
     <form
       className="space-y-4 rounded-xl bg-card/90 p-5 ring-1 ring-border/70"
       onSubmit={(e) => {
@@ -361,6 +706,31 @@ function ProductEditor({
             onChange={(e) => setDescripcion(e.target.value)}
           />
         </div>
+        <ProductImagesEditor
+          productId={initial?.id}
+          initialPrimary={initial?.imagenPrincipal}
+          initialSecondaries={initial?.imagenesSecundarias}
+          pending={pendingImages}
+          onPendingChange={setPendingImages}
+        />
+        <div className="space-y-1.5">
+          <Label htmlFor="woo-id">ID WooCommerce</Label>
+          <Input
+            id="woo-id"
+            value={wooId}
+            onChange={(e) => setWooId(e.target.value)}
+            placeholder="vacío = crear al empujar"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="meli-id">Ítem Mercado Libre</Label>
+          <Input
+            id="meli-id"
+            value={meliId}
+            onChange={(e) => setMeliId(e.target.value)}
+            placeholder="MLA…"
+          />
+        </div>
       </div>
       {error ? (
         <p className="text-sm text-destructive">{error}</p>
@@ -369,13 +739,31 @@ function ProductEditor({
         <p className="text-sm text-destructive">{loadError}</p>
       ) : null}
       <div className="flex gap-2">
-        <Button type="submit" disabled={loading || saving}>
+        <Button type="submit" disabled={loading || saving || syncing}>
           {saving ? "Guardando…" : "Guardar"}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={saving || syncing}
+          onClick={onCancel}
+        >
           Cancelar
         </Button>
       </div>
     </form>
+
+    {pendingSyncId ? (
+      <ConfirmModal
+        title="¿Actualizar también el sitio web?"
+        description="El producto ya quedó guardado en Aurix. ¿Querés empujar stock y precio a WooCommerce para actualizarlo en el sitio?"
+        confirmLabel="Sí, sincronizar"
+        cancelLabel="No, solo Aurix"
+        busy={syncing}
+        onConfirm={() => void confirmSyncToWeb()}
+        onCancel={skipSyncToWeb}
+      />
+    ) : null}
+    </>
   );
 }

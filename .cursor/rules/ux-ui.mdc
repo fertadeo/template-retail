@@ -1,0 +1,26 @@
+---
+description: Preferencias UX/UI Musicanoba (páginas, tabs, papelera, modales)
+globs:
+  - src/components/**/*.tsx
+  - src/app/**/*.tsx
+  - src/app/globals.css
+alwaysApply: false
+---
+
+# UX / UI Musicanoba
+
+Leer y respetar `docs/UX_UI.md`. Resumen operativo:
+
+- Comercio = local único; no reactivar UX de sucursales si `BRANCHES_ENABLED` es false.
+- No hay módulo Catálogo; productos se gestionan/consultan en Productos.
+- Listas con archivo: tabs `Recurso (n)` / `Papelera (m)` como en Biblioteca y Comercios.
+- Soft delete → Papelera; reactivar desde Papelera; no hard delete desde UI.
+- Cabecera de página: eyebrow + `font-display` + una frase + CTA.
+- Tablas en `rounded-xl bg-card/90 ring-1 ring-border/70`.
+- Acciones de fila: lápiz (editar) + menú ⋮ (`RowActionsMenu`) si hay 3+ acciones.
+- Modales vía `ModalPortal` a viewport completo.
+- Feedback de operaciones largas (import/sync productos): **abrir modal al iniciar**, progreso + resultado claro con cifras **dentro** del modal; no solo botón/toast.
+- Hasta **2 modales anidados** (trabajo + confirmación “¿Está seguro…?”); Escape cierra solo el de arriba; no un 3º nivel.
+- Semáforo productos estilo Vercel: punto + Listo/Atención/Crítico; filtrable por tabs con conteo.
+- Form con dirty: backdrop/Escape/Cancelar → `ConfirmModal` (salir sin guardar); si no hay cambios, cerrar directo.
+- Mensajes: éxito `bg-tealSoft/60`, error `bg-destructive/10 text-destructive`.

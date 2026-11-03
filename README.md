@@ -1,6 +1,6 @@
 # template-retail
 
-Gold **Aurix Retail** (frontend Next.js). Catálogo, productos, clientes, pedidos, POS y mayorista.
+Gold **Aurix Retail** (frontend Next.js). Template GitHub para el alta Fenec (`repoTemplateFront`).
 
 ## Stack
 
@@ -23,27 +23,33 @@ Con URL apunta al gold API (`/api/*` de `template-retail-api`).
 
 ## Conexión al API (alta Fenec)
 
-En cada instancia, el front debe buildarse con:
-
 ```
 NEXT_PUBLIC_API_URL=https://api-{slug}.aurixerp.com
 ```
 
-El cliente HTTP está en `src/lib/api-client.ts`; `src/lib/store.ts` enruta a API o memoria.
+Cliente HTTP: `src/lib/api-client.ts` · store: `src/lib/store.ts`.
 
 ## Módulos
 
 | Ruta | Uso |
 |------|-----|
 | `/` | Dashboard / KPIs |
-| `/catalogo` | Vitrina de productos activos |
-| `/productos` | SKUs + ficha QR/barcode |
-| `/clientes` | Agenda de clientes |
+| `/productos` | SKUs, semáforo, ficha, imágenes, sync canales |
+| `/clientes` | Agenda |
+| `/presupuestos` | Presupuestos |
+| `/biblioteca` | Media library |
 | `/pedidos` | Pedidos + historial POS |
-| `/pos` | Terminal de caja (envío + ticket térmico) |
-| `/mayorista` | Pedidos B2B + boleta PDF Aurix |
-| `/configuracion` | Listas de precios |
+| `/pos` | Terminal de caja |
+| `/mayorista` | Pedidos B2B |
+| `/reportes` | Ventas por vendedor |
+| `/comercios` | Multicomercio + papelera |
+| `/canales` | WooCommerce / Mercado Libre (pull, push, notificaciones) |
+| `/configuracion` | Listas de precios · cuentas |
+| `/sucursales` | Opcional (`BRANCHES_ENABLED`) |
+
+UX viva: `docs/UX_UI.md`. Push de agentes: a **`main`**.
 
 ## Template GitHub
 
 Marcado como **Template repository** para el alta (`repoTemplateFront`).
+Sincronizado desde mejoras validadas en instancias (p. ej. Musicanoba).

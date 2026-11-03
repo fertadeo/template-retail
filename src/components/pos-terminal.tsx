@@ -30,6 +30,9 @@ import {
   type OrderLine,
   type PaymentMethod,
 } from "@/lib/types";
+import { useBranchScope } from "@/lib/branch-scope-context";
+import { useComercio } from "@/lib/comercio-context";
+import { BRANCHES_ENABLED } from "@/lib/features";
 import { cn, formatMxn } from "@/lib/utils";
 import { useRetailQuery } from "@/lib/use-retail-query";
 
@@ -44,6 +47,9 @@ const selectClass = cn(
 );
 
 export function PosTerminal() {
+  const { comercio } = useComercio();
+  const { branchId, vendedorId, branchScope, branches, vendedor } =
+    useBranchScope();
   const {
     data,
     loading,
@@ -176,6 +182,12 @@ export function PosTerminal() {
         direccionEnvio: direccion,
         telefonoContacto: telefono,
         metodoPago,
+        branchId:
+          branchId ??
+          (branchScope === "all"
+            ? branches.find((b) => b.esDefault)?.id ?? branches[0]?.id ?? null
+            : null),
+        vendedorId,
       });
       setLastSale(sale);
       setCart([]);
@@ -227,6 +239,31 @@ export function PosTerminal() {
         <p className="mt-1 text-sm text-muted-foreground">
           Lista activa:{" "}
           <span className="font-medium text-teal">{listLabel}</span>
+          {" · "}
+          {BRANCHES_ENABLED ? (
+            <>
+              Sucursal:{" "}
+              <span className="font-medium text-foreground">
+                {branchId
+                  ? branches.find((b) => b.id === branchId)?.nombre ?? branchId
+                  : branches.find((b) => b.esDefault)?.nombre ??
+                    branches[0]?.nombre ??
+                    "—"}
+              </span>
+            </>
+          ) : (
+            <>
+              Comercio:{" "}
+              <span className="font-medium text-foreground">
+                {comercio?.nombre ?? "—"}
+              </span>
+            </>
+          )}
+          {" · "}
+          Operador:{" "}
+          <span className="font-medium text-foreground">
+            {vendedor?.nombre ?? "Sin asignar"}
+          </span>
           {conEnvio ? " · Con envío imprime ticket térmico 80 mm." : "."}
         </p>
       </div>

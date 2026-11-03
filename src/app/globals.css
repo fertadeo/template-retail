@@ -70,14 +70,14 @@ body {
   pointer-events: none;
 }
 
+/* Solo opacity: un transform en el contenedor del main convierte
+   position:fixed de los modales en relativo al contenido (scroll enorme). */
 @keyframes aurix-fade {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 

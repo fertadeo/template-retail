@@ -2,8 +2,22 @@
  * Store en memoria — fallback local cuando no hay NEXT_PUBLIC_API_URL.
  */
 
-import type { Client, Order, PriceList, Product } from "@/lib/types";
-import { orderTotal, productPrice } from "@/lib/types";
+import type {
+  AppFunctionMeta,
+  Branch,
+  Channel,
+  ChannelConfig,
+  ChannelLink,
+  Client,
+  Order,
+  PriceList,
+  Product,
+  ProductImage,
+  StockMode,
+  UserAccount,
+  UserRole,
+} from "@/lib/types";
+import { APP_FUNCTIONS, orderTotal, productPrice } from "@/lib/types";
 
 export const PRICE_LIST_MINORISTA = "pl_minorista";
 export const PRICE_LIST_MAYORISTA = "pl_mayorista";
@@ -25,120 +39,10 @@ const PRICE_LISTS: PriceList[] = [
   },
 ];
 
-function withLists(
-  base: number,
-  mayorista: number
-): { precio: number; precios: Record<string, number> } {
-  return {
-    precio: base,
-    precios: {
-      [PRICE_LIST_MINORISTA]: base,
-      [PRICE_LIST_MAYORISTA]: mayorista,
-    },
-  };
-}
-
-const PRODUCTS: Product[] = [
-  {
-    id: "p1",
-    sku: "BEB-001",
-    nombre: "Agua mineral 600ml",
-    categoria: "bebidas",
-    ...withLists(18, 14),
-    costo: 8,
-    stock: 120,
-    activo: true,
-    descripcion: "Botella individual.",
-  },
-  {
-    id: "p2",
-    sku: "BEB-014",
-    nombre: "Refresco cola 355ml",
-    categoria: "bebidas",
-    ...withLists(22, 17),
-    costo: 11,
-    stock: 80,
-    activo: true,
-    descripcion: "Lata.",
-  },
-  {
-    id: "p3",
-    sku: "ALI-210",
-    nombre: "Galletas surtidas 200g",
-    categoria: "alimentos",
-    ...withLists(45, 36),
-    costo: 22,
-    stock: 40,
-    activo: true,
-    descripcion: "Caja familiar.",
-  },
-  {
-    id: "p4",
-    sku: "ALI-088",
-    nombre: "Café molido 250g",
-    categoria: "alimentos",
-    ...withLists(95, 78),
-    costo: 48,
-    stock: 25,
-    activo: true,
-    descripcion: "Tueste medio.",
-  },
-  {
-    id: "p5",
-    sku: "LIM-003",
-    nombre: "Detergente 1L",
-    categoria: "limpieza",
-    ...withLists(68, 55),
-    costo: 35,
-    stock: 18,
-    activo: true,
-    descripcion: "Lavanda.",
-  },
-  {
-    id: "p6",
-    sku: "OTR-901",
-    nombre: "Bolsa reutilizable",
-    categoria: "otros",
-    ...withLists(35, 28),
-    costo: 12,
-    stock: 60,
-    activo: true,
-    descripcion: "Tela resistente.",
-  },
-];
-
-const CLIENTS: Client[] = [
-  {
-    id: "c1",
-    nombre: "María López",
-    email: "maria@ejemplo.mx",
-    telefono: "55 1234 5678",
-    direccion: "Av. Reforma 120, Col. Centro, CDMX",
-    rfc: "LOMA850101XXX",
-    notas: "Cliente frecuente.",
-    priceListId: PRICE_LIST_MINORISTA,
-  },
-  {
-    id: "c2",
-    nombre: "Comercial del Valle SA",
-    email: "compras@valle.mx",
-    telefono: "55 9876 5432",
-    direccion: "Calle Industrial 45, Parque Valle, NL",
-    rfc: "CVA920215ABC",
-    notas: "Factura a mes vencido.",
-    priceListId: PRICE_LIST_MAYORISTA,
-  },
-  {
-    id: "c3",
-    nombre: "Juan Pérez",
-    email: "juan.perez@mail.com",
-    telefono: "33 2222 1111",
-    direccion: "Calle Roble 8, Zapopan, Jal.",
-    rfc: "",
-    notas: "",
-    priceListId: null,
-  },
-];
+/** Sin datos de demo: el modo memoria arranca vacío (salvo listas de precio). */
+const PRODUCTS: Product[] = [];
+const CLIENTS: Client[] = [];
+const ORDERS: Order[] = [];
 
 const emptyEnvio = {
   conEnvio: false,
@@ -148,84 +52,11 @@ const emptyEnvio = {
   metodoPago: null as Order["metodoPago"],
 };
 
-const ORDERS: Order[] = [
-  {
-    id: "o1",
-    folio: "P-1001",
-    clientId: "c1",
-    clienteNombre: "María López",
-    status: "entregado",
-    canal: "pedido",
-    createdAt: "2026-10-25T15:20:00.000Z",
-    priceListId: PRICE_LIST_MINORISTA,
-    ...emptyEnvio,
-    lines: [
-      {
-        productId: "p4",
-        nombre: "Café molido 250g",
-        cantidad: 2,
-        precioUnitario: 95,
-      },
-      {
-        productId: "p1",
-        nombre: "Agua mineral 600ml",
-        cantidad: 6,
-        precioUnitario: 18,
-      },
-    ],
-  },
-  {
-    id: "o2",
-    folio: "POS-204",
-    clientId: null,
-    clienteNombre: "Mostrador",
-    status: "entregado",
-    canal: "pos",
-    createdAt: "2026-10-27T18:05:00.000Z",
-    priceListId: PRICE_LIST_MINORISTA,
-    ...emptyEnvio,
-    metodoPago: "efectivo",
-    lines: [
-      {
-        productId: "p2",
-        nombre: "Refresco cola 355ml",
-        cantidad: 3,
-        precioUnitario: 22,
-      },
-      {
-        productId: "p3",
-        nombre: "Galletas surtidas 200g",
-        cantidad: 1,
-        precioUnitario: 45,
-      },
-    ],
-  },
-  {
-    id: "o3",
-    folio: "P-1002",
-    clientId: "c2",
-    clienteNombre: "Comercial del Valle SA",
-    status: "preparando",
-    canal: "pedido",
-    createdAt: "2026-10-27T12:00:00.000Z",
-    priceListId: PRICE_LIST_MAYORISTA,
-    ...emptyEnvio,
-    lines: [
-      {
-        productId: "p5",
-        nombre: "Detergente 1L",
-        cantidad: 10,
-        precioUnitario: 55,
-      },
-    ],
-  },
-];
-
 let priceLists = structuredClone(PRICE_LISTS);
 let products = structuredClone(PRODUCTS);
 let clients = structuredClone(CLIENTS);
 let orders = structuredClone(ORDERS);
-let seq = 10;
+let seq = 0;
 
 function nextId(prefix: string) {
   seq += 1;
@@ -355,12 +186,125 @@ function syncProductDefaultPrices() {
   }));
 }
 
+const productImages = new Map<string, ProductImage[]>();
+
+function withImages(p: Product): Product {
+  const imgs = [...(productImages.get(p.id) ?? [])].sort(
+    (a, b) =>
+      Number(b.isPrimary) - Number(a.isPrimary) ||
+      a.sortOrder - b.sortOrder
+  );
+  const primary = imgs.find((i) => i.isPrimary) ?? imgs[0] ?? null;
+  return {
+    ...p,
+    imagenPrincipal: primary
+      ? { ...primary, isPrimary: true }
+      : null,
+    imagenesSecundarias: imgs
+      .filter((i) => i.id !== primary?.id)
+      .map((i) => ({ ...i, isPrimary: false })),
+  };
+}
+
+function ensureMemoryPrimary(productId: string) {
+  const imgs = productImages.get(productId) ?? [];
+  if (!imgs.length) {
+    productImages.set(productId, []);
+    return;
+  }
+  if (imgs.some((i) => i.isPrimary)) return;
+  productImages.set(
+    productId,
+    imgs.map((img, idx) => ({ ...img, isPrimary: idx === 0 }))
+  );
+}
+
+export function listProductImages(productId: string): ProductImage[] {
+  const p = withImages({
+    id: productId,
+    sku: "",
+    nombre: "",
+    categoria: "otros",
+    precio: 0,
+    precios: {},
+    costo: 0,
+    stock: 0,
+    activo: true,
+    descripcion: "",
+  });
+  return [
+    ...(p.imagenPrincipal ? [p.imagenPrincipal] : []),
+    ...(p.imagenesSecundarias ?? []),
+  ];
+}
+
+export function addProductImage(
+  productId: string,
+  input: {
+    filename: string;
+    mime: string;
+    dataUrl: string | null;
+    title?: string;
+    isPrimary?: boolean;
+  }
+): ProductImage {
+  if (!getProductRaw(productId)) throw new Error("Producto no encontrado.");
+  const imgs = [...(productImages.get(productId) ?? [])];
+  const makePrimary = input.isPrimary === true || imgs.length === 0;
+  const image: ProductImage = {
+    id: nextId("media"),
+    filename: input.filename,
+    mime: input.mime,
+    dataUrl: input.dataUrl,
+    url: input.dataUrl,
+    sourceUrl: null,
+    title: input.title?.trim() || input.filename,
+    isPrimary: makePrimary,
+    sortOrder: imgs.length,
+  };
+  const next = makePrimary
+    ? [...imgs.map((i) => ({ ...i, isPrimary: false })), image]
+    : [...imgs, image];
+  productImages.set(productId, next);
+  return image;
+}
+
+export function setProductImagePrimary(
+  productId: string,
+  mediaId: string
+): ProductImage[] {
+  const imgs = productImages.get(productId) ?? [];
+  if (!imgs.some((i) => i.id === mediaId)) {
+    throw new Error("Imagen no encontrada en el producto.");
+  }
+  productImages.set(
+    productId,
+    imgs.map((i) => ({ ...i, isPrimary: i.id === mediaId }))
+  );
+  return listProductImages(productId);
+}
+
+export function deleteProductImage(productId: string, mediaId: string): void {
+  const imgs = (productImages.get(productId) ?? []).filter(
+    (i) => i.id !== mediaId
+  );
+  productImages.set(productId, imgs);
+  ensureMemoryPrimary(productId);
+}
+
+function getProductRaw(id: string) {
+  return products.find((p) => p.id === id);
+}
+
 export function listProducts() {
-  return [...products].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  return [...products]
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
+    .map(withImages);
 }
 
 export function getProduct(id: string) {
-  return products.find((p) => p.id === id);
+  const p = getProductRaw(id);
+  return p ? withImages(p) : undefined;
 }
 
 export function upsertProduct(
@@ -395,7 +339,7 @@ export function upsertProduct(
     };
     products = [...products];
     products[idx] = updated;
-    return updated;
+    return withImages(updated);
   }
 
   const product: Product = {
@@ -411,7 +355,8 @@ export function upsertProduct(
     descripcion: input.descripcion.trim(),
   };
   products = [product, ...products];
-  return product;
+  productImages.set(product.id, []);
+  return withImages(product);
 }
 
 export function listClients() {
@@ -486,6 +431,8 @@ export type PosSaleOptions = {
   direccionEnvio?: string;
   telefonoContacto?: string;
   metodoPago?: Order["metodoPago"];
+  branchId?: string | null;
+  vendedorId?: string | null;
 };
 
 export function addPosSale(
@@ -533,6 +480,10 @@ export function addPosSale(
     clienteNombre: client?.nombre ?? "Mostrador",
     status: conEnvio ? "preparando" : "entregado",
     canal: "pos",
+    branchId: options.branchId ?? null,
+    vendedorId: options.vendedorId ?? null,
+    branchNombre: null,
+    vendedorNombre: null,
     createdAt: new Date().toISOString(),
     priceListId: listId,
     lines,
@@ -634,15 +585,39 @@ export { productPrice };
 
 export function dashboardStats(todayIso?: string) {
   const day = todayIso ?? "2026-10-27";
-  const ventasHoy = orders
-    .filter(
-      (o) =>
-        o.createdAt.startsWith(day) &&
-        o.status !== "cancelado" &&
-        o.status !== "borrador"
-    )
-    .reduce((acc, o) => acc + orderTotal(o), 0);
+  const hoy = orders.filter(
+    (o) =>
+      o.createdAt.startsWith(day) &&
+      o.status !== "cancelado" &&
+      o.status !== "borrador"
+  );
+  const ventasHoy = hoy.reduce((acc, o) => acc + orderTotal(o), 0);
   const stockBajo = products.filter((p) => p.activo && p.stock <= 20).length;
+  const byVendor = new Map<
+    string,
+    {
+      vendedorId: string | null;
+      vendedorNombre: string;
+      branchId: string | null;
+      branchNombre: string | null;
+      tickets: number;
+      total: number;
+    }
+  >();
+  for (const o of hoy) {
+    const key = o.vendedorId ?? "__sin__";
+    const prev = byVendor.get(key) ?? {
+      vendedorId: o.vendedorId ?? null,
+      vendedorNombre: o.vendedorNombre ?? "Sin asignar",
+      branchId: o.branchId ?? null,
+      branchNombre: o.branchNombre ?? null,
+      tickets: 0,
+      total: 0,
+    };
+    prev.tickets += 1;
+    prev.total += orderTotal(o);
+    byVendor.set(key, prev);
+  }
   return {
     productos: products.filter((p) => p.activo).length,
     clientes: clients.length,
@@ -651,5 +626,403 @@ export function dashboardStats(todayIso?: string) {
     ).length,
     ventasHoy,
     stockBajo,
+    scope: "all" as const,
+    branchId: null,
+    ventasPorVendedor: [...byVendor.values()].sort((a, b) => b.total - a.total),
   };
+}
+
+let branches: Branch[] = [
+  {
+    id: "br_musicanoba",
+    codigo: "musicanoba",
+    nombre: "Musicanoba",
+    direccion: "",
+    rubro: "Tecnología",
+    activa: true,
+    esDefault: true,
+  },
+  {
+    id: "br_mi_espacio",
+    codigo: "mi-espacio",
+    nombre: "Mi Espacio",
+    direccion: "",
+    rubro: "Tecnología",
+    activa: true,
+    esDefault: false,
+  },
+  {
+    id: "br_bella_dona",
+    codigo: "bella-dona",
+    nombre: "Bella Dona",
+    direccion: "",
+    rubro: "Bijouterie",
+    activa: true,
+    esDefault: false,
+  },
+];
+
+let channelConfigs: ChannelConfig[] = [
+  {
+    channel: "woocommerce",
+    enabled: false,
+    storeUrl: null,
+    consumerKey: null,
+    consumerSecretSet: false,
+    consumerSecretMasked: null,
+    accessTokenSet: false,
+    accessTokenMasked: null,
+    sellerId: null,
+    siteId: "MLA",
+    priceListId: null,
+    stockMode: "total",
+    stockBranchId: null,
+    lastSyncAt: null,
+    configured: false,
+  },
+  {
+    channel: "mercadolibre",
+    enabled: false,
+    storeUrl: null,
+    consumerKey: null,
+    consumerSecretSet: false,
+    consumerSecretMasked: null,
+    accessTokenSet: false,
+    accessTokenMasked: null,
+    sellerId: null,
+    siteId: "MLA",
+    priceListId: null,
+    stockMode: "total",
+    stockBranchId: null,
+    lastSyncAt: null,
+    configured: false,
+  },
+];
+
+const productLinks = new Map<string, ChannelLink[]>();
+
+export function listBranches(onlyActive = false): Branch[] {
+  return onlyActive ? branches.filter((b) => b.activa) : [...branches];
+}
+
+export function upsertBranch(input: {
+  id?: string;
+  codigo: string;
+  nombre: string;
+  direccion?: string;
+  rubro?: string;
+  activa?: boolean;
+  esDefault?: boolean;
+}): Branch {
+  const codigo = input.codigo.trim().toLowerCase().replace(/\s+/g, "-");
+  if (
+    branches.some(
+      (b) => b.codigo === codigo && b.id !== input.id
+    )
+  ) {
+    throw new Error(`Ya existe una sucursal con el código "${codigo}".`);
+  }
+  if (input.esDefault) {
+    branches = branches.map((b) => ({ ...b, esDefault: false }));
+  }
+  if (input.id) {
+    const idx = branches.findIndex((b) => b.id === input.id);
+    if (idx < 0) throw new Error("Sucursal no encontrada.");
+    const next: Branch = {
+      ...branches[idx],
+      codigo,
+      nombre: input.nombre,
+      direccion: input.direccion ?? "",
+      rubro: input.rubro ?? branches[idx].rubro,
+      activa: input.activa ?? true,
+      esDefault: input.esDefault ?? branches[idx].esDefault,
+    };
+    branches[idx] = next;
+    return next;
+  }
+  const created: Branch = {
+    id: `br_${Date.now()}`,
+    codigo,
+    nombre: input.nombre,
+    direccion: input.direccion ?? "",
+    rubro: input.rubro ?? "",
+    activa: input.activa ?? true,
+    esDefault: Boolean(input.esDefault),
+  };
+  branches = [...branches, created];
+  return created;
+}
+
+export function setDefaultBranch(id: string): Branch {
+  const target = branches.find((b) => b.id === id);
+  if (!target) throw new Error("Sucursal no encontrada.");
+  if (!target.activa) {
+    throw new Error("Reactivá la sucursal antes de marcarla como default.");
+  }
+  branches = branches.map((b) => ({
+    ...b,
+    esDefault: b.id === id,
+  }));
+  return branches.find((b) => b.id === id)!;
+}
+
+export function softDeleteBranch(id: string): Branch {
+  const idx = branches.findIndex((b) => b.id === id);
+  if (idx < 0) throw new Error("Sucursal no encontrada.");
+  if (!branches[idx].activa) {
+    throw new Error("La sucursal ya está desactivada.");
+  }
+  const others = branches.filter((b) => b.activa && b.id !== id);
+  if (others.length === 0) {
+    throw new Error(
+      "No se puede desactivar la única sucursal activa. Creá o reactivá otra primero."
+    );
+  }
+  const wasDefault = branches[idx].esDefault;
+  branches[idx] = { ...branches[idx], activa: false, esDefault: false };
+  if (wasDefault) {
+    const nextDefault = others[0];
+    branches = branches.map((b) =>
+      b.id === nextDefault.id ? { ...b, esDefault: true } : b
+    );
+  }
+  return branches[idx];
+}
+
+export function restoreBranch(id: string): Branch {
+  const idx = branches.findIndex((b) => b.id === id);
+  if (idx < 0) throw new Error("Sucursal no encontrada.");
+  if (branches[idx].activa) {
+    throw new Error("La sucursal ya está activa.");
+  }
+  branches[idx] = { ...branches[idx], activa: true };
+  return branches[idx];
+}
+
+const nowIso = () => new Date().toISOString();
+
+let users: UserAccount[] = [
+  {
+    id: "usr_superadmin",
+    email: "superadmin@aurixerp.com",
+    nombre: "Superadmin",
+    role: "superadmin",
+    activa: true,
+    branchIds: [],
+    functions: [],
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  },
+];
+
+export function listUsers(onlyActive = false): UserAccount[] {
+  return onlyActive ? users.filter((u) => u.activa) : [...users];
+}
+
+export function listUserFunctions(): AppFunctionMeta[] {
+  return [...APP_FUNCTIONS];
+}
+
+export function upsertUser(input: {
+  id?: string;
+  email: string;
+  nombre: string;
+  password?: string;
+  role: UserRole;
+  activa?: boolean;
+  branchIds?: string[];
+  functions?: string[];
+}): UserAccount {
+  const email = input.email.trim().toLowerCase();
+  const nombre = input.nombre.trim();
+  if (!email || !nombre) throw new Error("Email y nombre son obligatorios.");
+  if (!email.includes("@")) throw new Error("Email inválido.");
+  if (!input.id && !input.password?.trim()) {
+    throw new Error("La contraseña es obligatoria al crear el usuario.");
+  }
+  if (input.password !== undefined && input.password.trim().length < 6) {
+    throw new Error("La contraseña debe tener al menos 6 caracteres.");
+  }
+  if (users.some((u) => u.email === email && u.id !== input.id)) {
+    throw new Error(`Ya existe un usuario con el email "${email}".`);
+  }
+
+  const isVendedor = input.role === "vendedor";
+  const branchIds = isVendedor
+    ? [...new Set((input.branchIds ?? []).filter(Boolean))]
+    : [];
+  const functions = isVendedor
+    ? ([...new Set(input.functions ?? [])] as UserAccount["functions"])
+    : [];
+  if (isVendedor && branchIds.length === 0) {
+    // Sucursales opcionales (comercio = local único).
+  }
+
+  if (input.id) {
+    const idx = users.findIndex((u) => u.id === input.id);
+    if (idx < 0) throw new Error("Usuario no encontrado.");
+    const next: UserAccount = {
+      ...users[idx],
+      email,
+      nombre,
+      role: input.role,
+      activa: input.activa ?? true,
+      branchIds,
+      functions,
+      updatedAt: nowIso(),
+    };
+    users[idx] = next;
+    return next;
+  }
+
+  const created: UserAccount = {
+    id: `usr_${Date.now()}`,
+    email,
+    nombre,
+    role: input.role,
+    activa: input.activa ?? true,
+    branchIds,
+    functions,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+  users = [...users, created];
+  return created;
+}
+
+export function softDeleteUser(id: string): UserAccount {
+  const idx = users.findIndex((u) => u.id === id);
+  if (idx < 0) throw new Error("Usuario no encontrado.");
+  if (!users[idx].activa) throw new Error("El usuario ya está desactivado.");
+  if (users[idx].role === "superadmin") {
+    const other = users.filter(
+      (u) => u.role === "superadmin" && u.activa && u.id !== id
+    );
+    if (other.length === 0) {
+      throw new Error("No se puede desactivar el único superadmin activo.");
+    }
+  }
+  users[idx] = { ...users[idx], activa: false, updatedAt: nowIso() };
+  return users[idx];
+}
+
+export function restoreUser(id: string): UserAccount {
+  const idx = users.findIndex((u) => u.id === id);
+  if (idx < 0) throw new Error("Usuario no encontrado.");
+  if (users[idx].activa) throw new Error("El usuario ya está activo.");
+  users[idx] = { ...users[idx], activa: true, updatedAt: nowIso() };
+  return users[idx];
+}
+
+export function salesByVendor(opts?: {
+  from?: string;
+  to?: string;
+  canal?: "pos" | "pedido" | "mayorista";
+}) {
+  const filtered = orders.filter((o) => {
+    if (o.status === "cancelado" || o.status === "borrador") return false;
+    if (opts?.canal && o.canal !== opts.canal) return false;
+    const day = o.createdAt.slice(0, 10);
+    if (opts?.from && day < opts.from) return false;
+    if (opts?.to && day > opts.to) return false;
+    return true;
+  });
+  const byVendor = new Map<
+    string,
+    {
+      vendedorId: string | null;
+      vendedorNombre: string;
+      branchId: string | null;
+      branchNombre: string | null;
+      tickets: number;
+      total: number;
+    }
+  >();
+  for (const o of filtered) {
+    const key = `${o.vendedorId ?? "__sin__"}::${o.branchId ?? "__all__"}`;
+    const prev = byVendor.get(key) ?? {
+      vendedorId: o.vendedorId ?? null,
+      vendedorNombre: o.vendedorNombre ?? "Sin asignar",
+      branchId: o.branchId ?? null,
+      branchNombre: o.branchNombre ?? null,
+      tickets: 0,
+      total: 0,
+    };
+    prev.tickets += 1;
+    prev.total += orderTotal(o);
+    byVendor.set(key, prev);
+  }
+  return [...byVendor.values()].sort((a, b) => b.total - a.total);
+}
+
+export function listChannels(): ChannelConfig[] {
+  return channelConfigs.map((c) => ({ ...c }));
+}
+
+export function saveChannel(
+  channel: Channel,
+  body: {
+    enabled?: boolean;
+    storeUrl?: string | null;
+    consumerKey?: string | null;
+    consumerSecret?: string | null;
+    accessToken?: string | null;
+    refreshToken?: string | null;
+    sellerId?: string | null;
+    siteId?: string | null;
+    priceListId?: string | null;
+    stockMode?: StockMode;
+    stockBranchId?: string | null;
+  }
+): ChannelConfig {
+  channelConfigs = channelConfigs.map((c) => {
+    if (c.channel !== channel) return c;
+    const next: ChannelConfig = {
+      ...c,
+      enabled: body.enabled ?? c.enabled,
+      storeUrl: body.storeUrl !== undefined ? body.storeUrl : c.storeUrl,
+      consumerKey:
+        body.consumerKey !== undefined ? body.consumerKey : c.consumerKey,
+      consumerSecretSet: body.consumerSecret
+        ? true
+        : c.consumerSecretSet,
+      accessTokenSet: body.accessToken ? true : c.accessTokenSet,
+      sellerId: body.sellerId !== undefined ? body.sellerId : c.sellerId,
+      siteId: body.siteId ?? c.siteId,
+      priceListId:
+        body.priceListId !== undefined ? body.priceListId : c.priceListId,
+      stockMode: body.stockMode ?? c.stockMode,
+      stockBranchId:
+        body.stockBranchId !== undefined
+          ? body.stockBranchId
+          : c.stockBranchId,
+    };
+    next.configured =
+      channel === "woocommerce"
+        ? Boolean(next.storeUrl && next.consumerKey && next.consumerSecretSet)
+        : next.accessTokenSet;
+    return next;
+  });
+  return channelConfigs.find((c) => c.channel === channel)!;
+}
+
+export function upsertProductChannelLink(
+  productId: string,
+  channel: Channel,
+  body: { externalId: string; externalSku?: string; syncEnabled?: boolean }
+): ChannelLink {
+  const link: ChannelLink = {
+    productId,
+    channel,
+    externalId: body.externalId,
+    externalSku: body.externalSku ?? "",
+    syncEnabled: body.syncEnabled !== false,
+    lastSyncedAt: null,
+    lastError: null,
+  };
+  const prev = (productLinks.get(productId) ?? []).filter(
+    (l) => l.channel !== channel
+  );
+  productLinks.set(productId, [...prev, link]);
+  return link;
 }

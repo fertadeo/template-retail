@@ -16,9 +16,9 @@ const syne = Syne({
 });
 
 export const metadata: Metadata = {
-  title: "Aurix Retail",
+  title: "Retail 360",
   description:
-    "Gold template Aurix: catálogo, productos, clientes, pedidos y POS.",
+    "Retail 360: multicomercio, catálogo, POS, sync WooCommerce y Mercado Libre.",
 };
 
 export default function RootLayout({
