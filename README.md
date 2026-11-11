@@ -24,7 +24,7 @@ Con URL apunta al gold API (`/api/*` de `template-retail-api`).
 ## Conexión al API (alta Fenec)
 
 ```
-NEXT_PUBLIC_API_URL=https://api-{slug}.aurixerp.com
+NEXT_PUBLIC_API_URL=http://{slug}.api.aurixerp.com
 ```
 
 Cliente HTTP: `src/lib/api-client.ts` · store: `src/lib/store.ts`.

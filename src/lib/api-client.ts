@@ -204,6 +204,28 @@ export const api = {
 
   listProducts: () => request<Product[]>("/products"),
 
+  importProductFromUrl: (url: string) =>
+    request<{
+      draft: {
+        nombre: string;
+        sku: string;
+        descripcion: string;
+        precio: number;
+        categoria: ProductCategory;
+        sourceUrl: string;
+        images: Array<{
+          filename: string;
+          mime: string;
+          dataUrl: string | null;
+          sourceUrl: string;
+        }>;
+        warnings: string[];
+      };
+    }>("/products/import-from-url", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+
   getProduct: (id: string) => request<Product>(`/products/${id}`),
 
   createProduct: (body: {

@@ -6,6 +6,7 @@
 import { api } from "@/lib/api-client";
 import { isApiMode } from "@/lib/api-config";
 import * as memory from "@/lib/memory-store";
+import type { ImportedProductDraft } from "@/lib/product-import";
 import type {
   AppFunctionMeta,
   Branch,
@@ -99,6 +100,18 @@ export async function getProduct(
   } catch {
     return undefined;
   }
+}
+
+export async function importProductFromUrl(
+  url: string
+): Promise<ImportedProductDraft> {
+  if (!isApiMode()) {
+    throw new Error(
+      "Importar desde URL requiere API remota (NEXT_PUBLIC_API_URL)."
+    );
+  }
+  const { draft } = await api.importProductFromUrl(url);
+  return draft;
 }
 
 export async function upsertProduct(

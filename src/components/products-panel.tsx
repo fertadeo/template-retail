@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pencil } from "lucide-react";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { ProductImportFromUrlModal } from "@/components/product-import-from-url-modal";
 import {
   ProductImagesEditor,
   type PendingFile,
@@ -13,6 +14,10 @@ import { ProductHealthDot } from "@/components/status-dot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  dataUrlByteSize,
+  type ImportedProductDraft,
+} from "@/lib/product-import";
 import {
   HEALTH_FILTERS,
   healthDotClass,
@@ -40,6 +45,15 @@ import {
 import { cn, formatMxn } from "@/lib/utils";
 
 const CATS = Object.keys(CATEGORY_LABELS) as ProductCategory[];
+
+type ProductEditorPrefill = {
+  nombre: string;
+  sku: string;
+  descripcion: string;
+  categoria: ProductCategory;
+  precio: number;
+  pendingImages: PendingFile[];
+};
 
 type SortKey =
   | "nombre"
@@ -70,6 +84,38 @@ export function ProductsPanel() {
     "all"
   );
   const [sort, setSort] = useState<SortKey>("nombre");
+  const [importOpen, setImportOpen] = useState(false);
+  const [createPrefill, setCreatePrefill] =
+    useState<ProductEditorPrefill | null>(null);
+
+  function applyImportDraft(draft: ImportedProductDraft) {
+    const pending: PendingFile[] = draft.images
+      .filter((img): img is typeof img & { dataUrl: string } =>
+        Boolean(img.dataUrl)
+      )
+      .map((img, i) => ({
+        key: `import-${i}-${img.filename}`,
+        filename: img.filename,
+        mime: img.mime,
+        sizeBytes: dataUrlByteSize(img.dataUrl),
+        dataUrl: img.dataUrl,
+        asPrimary: i === 0,
+      }));
+    const cat = CATS.includes(draft.categoria as ProductCategory)
+      ? (draft.categoria as ProductCategory)
+      : "otros";
+    setCreatePrefill({
+      nombre: draft.nombre,
+      sku: draft.sku,
+      descripcion: draft.descripcion,
+      categoria: cat,
+      precio: draft.precio,
+      pendingImages: pending,
+    });
+    setCreating(true);
+    setEditing(null);
+    setDetail(null);
+  }
 
   const healthCounts = useMemo(() => {
     const counts = { ready: 0, attention: 0, critical: 0, all: 0 };
@@ -161,19 +207,37 @@ export function ProductsPanel() {
             marca si falta foto, precio u otros datos.
           </p>
         </div>
-        <Button
-          type="button"
-          size="lg"
-          className="h-10"
-          onClick={() => {
-            setCreating(true);
-            setEditing(null);
-            setDetail(null);
-          }}
-        >
-          Cargar producto
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-10"
+            onClick={() => setImportOpen(true)}
+          >
+            Desde URL
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            className="h-10"
+            onClick={() => {
+              setCreatePrefill(null);
+              setCreating(true);
+              setEditing(null);
+              setDetail(null);
+            }}
+          >
+            Cargar producto
+          </Button>
+        </div>
       </div>
+
+      <ProductImportFromUrlModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onApply={applyImportDraft}
+      />
 
       <div className="flex flex-col gap-3">
         <div
@@ -271,11 +335,14 @@ export function ProductsPanel() {
       {creating || editing ? (
         <ProductEditor
           initial={editing ?? undefined}
+          prefill={creating && !editing ? createPrefill ?? undefined : undefined}
           onCancel={() => {
+            setCreatePrefill(null);
             setCreating(false);
             setEditing(null);
           }}
           onSaved={() => {
+            setCreatePrefill(null);
             setCreating(false);
             setEditing(null);
             reload();
@@ -456,10 +523,12 @@ export function ProductsPanel() {
 
 function ProductEditor({
   initial,
+  prefill,
   onCancel,
   onSaved,
 }: {
   initial?: Product;
+  prefill?: ProductEditorPrefill;
   onCancel: () => void;
   onSaved: () => void;
 }) {
@@ -468,10 +537,10 @@ function ProductEditor({
     loading,
     error: loadError,
   } = useRetailQuery(() => listPriceLists(true), []);
-  const [sku, setSku] = useState(initial?.sku ?? "");
-  const [nombre, setNombre] = useState(initial?.nombre ?? "");
+  const [sku, setSku] = useState(initial?.sku ?? prefill?.sku ?? "");
+  const [nombre, setNombre] = useState(initial?.nombre ?? prefill?.nombre ?? "");
   const [categoria, setCategoria] = useState<ProductCategory>(
-    initial?.categoria ?? "otros"
+    initial?.categoria ?? prefill?.categoria ?? "otros"
   );
   const [precios, setPrecios] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
@@ -496,9 +565,20 @@ function ProductEditor({
       return next;
     });
   }, [initial, lists]);
+  useEffect(() => {
+    if (!prefill?.precio || !lists?.length) return;
+    const defaultList = lists.find((l) => l.esDefault) ?? lists[0];
+    if (!defaultList) return;
+    setPrecios((current) => ({
+      ...current,
+      [defaultList.id]: String(prefill.precio),
+    }));
+  }, [prefill, lists]);
   const [costo, setCosto] = useState(String(initial?.costo ?? 0));
   const [stock, setStock] = useState(String(initial?.stock ?? 0));
-  const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "");
+  const [descripcion, setDescripcion] = useState(
+    initial?.descripcion ?? prefill?.descripcion ?? ""
+  );
   const [activo, setActivo] = useState(initial?.activo ?? true);
   const [wooId, setWooId] = useState(
     initial?.channelLinks?.find((l) => l.channel === "woocommerce")
@@ -508,7 +588,9 @@ function ProductEditor({
     initial?.channelLinks?.find((l) => l.channel === "mercadolibre")
       ?.externalId ?? ""
   );
-  const [pendingImages, setPendingImages] = useState<PendingFile[]>([]);
+  const [pendingImages, setPendingImages] = useState<PendingFile[]>(
+    prefill?.pendingImages ?? []
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [pendingSyncId, setPendingSyncId] = useState<string | null>(null);
