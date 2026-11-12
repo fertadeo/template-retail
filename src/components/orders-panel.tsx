@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Printer } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BellRing, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,11 +19,71 @@ import {
   PAYMENT_METHOD_LABELS,
   orderTotal,
   productPrice,
+  type Order,
   type OrderLine,
 } from "@/lib/types";
-import { formatMxn } from "@/lib/utils";
+import { cn, formatMxn } from "@/lib/utils";
 import { CatalogWebOrders } from "@/components/catalog-web-orders";
 import { useRetailQuery } from "@/lib/use-retail-query";
+
+const SEEN_KEY = "aurix.orders.seenPrepareIds";
+const POLL_MS = 25_000;
+
+const CANAL_BADGE: Record<
+  Order["canal"],
+  { label: string; className: string }
+> = {
+  pos: {
+    label: "POS",
+    className: "bg-[#1f1c19] text-[#f2eee6] ring-1 ring-black/10",
+  },
+  pedido: {
+    label: "Pedido",
+    className: "bg-teal/15 text-teal ring-1 ring-teal/25",
+  },
+  mayorista: {
+    label: "Mayorista",
+    className: "bg-amber-100 text-amber-900 ring-1 ring-amber-300/70",
+  },
+};
+
+function needsPrepare(o: Order): boolean {
+  if (o.canal === "pos") return false;
+  return o.status === "confirmado" || o.status === "preparando";
+}
+
+function readSeenIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(SEEN_KEY);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeSeenIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    SEEN_KEY,
+    JSON.stringify([...ids].slice(-200))
+  );
+}
+
+function CanalBadge({ canal }: { canal: Order["canal"] }) {
+  const cfg = CANAL_BADGE[canal];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide",
+        cfg.className
+      )}
+    >
+      {cfg.label}
+    </span>
+  );
+}
 
 export function OrdersPanel() {
   const {
@@ -33,6 +93,68 @@ export function OrdersPanel() {
     reload,
   } = useRetailQuery(() => listOrders(), []);
   const [open, setOpen] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
+  const [alertOrder, setAlertOrder] = useState<Order | null>(null);
+  const [dismissedBanner, setDismissedBanner] = useState(false);
+  const primedRef = useRef(false);
+
+  const pendingPrepare = useMemo(
+    () => (orders ?? []).filter(needsPrepare),
+    [orders]
+  );
+
+  useEffect(() => {
+    const t = window.setInterval(() => reload(), POLL_MS);
+    return () => window.clearInterval(t);
+  }, [reload]);
+
+  useEffect(() => {
+    if (!orders) return;
+    const pending = orders.filter(needsPrepare);
+    const seen = readSeenIds();
+
+    if (!primedRef.current) {
+      // Primera carga: marcar los actuales como vistos (sin alarmar).
+      for (const o of pending) seen.add(o.id);
+      writeSeenIds(seen);
+      primedRef.current = true;
+      return;
+    }
+
+    const fresh = pending.filter((o) => !seen.has(o.id));
+    if (!fresh.length) return;
+    // El más reciente primero.
+    fresh.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    setAlertOrder(fresh[0]);
+    setDismissedBanner(false);
+    for (const o of fresh) seen.add(o.id);
+    writeSeenIds(seen);
+
+    try {
+      // Beep suave si el navegador lo permite.
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (Ctx) {
+        const ctx = new Ctx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 880;
+        gain.gain.value = 0.04;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        window.setTimeout(() => {
+          osc.stop();
+          void ctx.close();
+        }, 180);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [orders]);
 
   return (
     <div className="space-y-6">
@@ -58,6 +180,74 @@ export function OrdersPanel() {
         </Button>
       </div>
 
+      {pendingPrepare.length > 0 && !dismissedBanner ? (
+        <div
+          role="status"
+          className="flex flex-col gap-3 rounded-2xl border border-teal/30 bg-teal/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 rounded-lg bg-teal/20 p-2 text-teal">
+              <BellRing className="size-5" />
+            </span>
+            <div>
+              <p className="font-medium text-charcoal">
+                {pendingPrepare.length === 1
+                  ? "Tenés 1 pedido para preparar"
+                  : `Tenés ${pendingPrepare.length} pedidos para preparar`}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {pendingPrepare
+                  .slice(0, 3)
+                  .map((o) => o.folio)
+                  .join(" · ")}
+                {pendingPrepare.length > 3
+                  ? ` · +${pendingPrepare.length - 3}`
+                  : ""}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="self-end rounded-lg p-2 text-muted-foreground hover:bg-teal/15 hover:text-foreground sm:self-center"
+            aria-label="Cerrar aviso"
+            onClick={() => setDismissedBanner(true)}
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ) : null}
+
+      {alertOrder ? (
+        <div
+          role="alert"
+          className="fixed bottom-5 left-1/2 z-50 w-[min(28rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-2xl bg-[#1f1c19] p-4 text-[#f2eee6] shadow-2xl ring-1 ring-white/10"
+        >
+          <div className="flex items-start gap-3">
+            <BellRing className="mt-0.5 size-5 shrink-0 text-[#5eead4]" />
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-semibold">
+                Pedido nuevo · {alertOrder.folio}
+              </p>
+              <p className="mt-1 text-sm text-sand/70">
+                {alertOrder.clienteNombre}
+                {alertOrder.conEnvio ? " · con envío" : ""} ·{" "}
+                {formatMxn(orderTotal(alertOrder))}. Preparalo para despachar.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-[#5eead4] text-[#1f1c19] hover:bg-[#5eead4]/90"
+                  onClick={() => setAlertOrder(null)}
+                >
+                  Entendido
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {open ? (
         <NewOrderForm
           onCancel={() => setOpen(false)}
@@ -76,6 +266,9 @@ export function OrdersPanel() {
         ) : error ? (
           <p className="px-4 py-6 text-sm text-destructive">{error}</p>
         ) : null}
+        {printError ? (
+          <p className="px-4 pt-3 text-sm text-destructive">{printError}</p>
+        ) : null}
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border/60 text-xs uppercase tracking-[0.1em] text-muted-foreground">
             <tr>
@@ -89,7 +282,12 @@ export function OrdersPanel() {
           </thead>
           <tbody className="divide-y divide-border/60">
             {(orders ?? []).map((o) => (
-              <tr key={o.id}>
+              <tr
+                key={o.id}
+                className={cn(
+                  needsPrepare(o) ? "bg-teal/[0.04]" : undefined
+                )}
+              >
                 <td className="px-4 py-3 font-mono text-xs">{o.folio}</td>
                 <td className="px-4 py-3">
                   <p className="font-medium">{o.clienteNombre}</p>
@@ -106,28 +304,47 @@ export function OrdersPanel() {
                     </p>
                   ) : null}
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {ORDER_STATUS_LABELS[o.status]}
+                <td className="px-4 py-3">
+                  <span
+                    className={cn(
+                      "text-sm",
+                      needsPrepare(o)
+                        ? "font-medium text-teal"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {ORDER_STATUS_LABELS[o.status]}
+                    {needsPrepare(o) ? " · preparar" : ""}
+                  </span>
                 </td>
-                <td className="px-4 py-3 uppercase text-muted-foreground">
-                  {o.canal}
+                <td className="px-4 py-3">
+                  <CanalBadge canal={o.canal} />
                 </td>
                 <td className="px-4 py-3 text-right tabular-nums font-medium">
                   {formatMxn(orderTotal(o))}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {o.conEnvio ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      onClick={() => printThermalTicket(o)}
-                    >
-                      <Printer className="size-3.5" />
-                      Ticket
-                    </Button>
-                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setPrintError(null);
+                      try {
+                        printThermalTicket(o);
+                      } catch (e) {
+                        setPrintError(
+                          e instanceof Error
+                            ? e.message
+                            : "No se pudo imprimir."
+                        );
+                      }
+                    }}
+                  >
+                    <Printer className="size-3.5" />
+                    Ticket
+                  </Button>
                 </td>
               </tr>
             ))}
