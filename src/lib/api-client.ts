@@ -802,4 +802,33 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ mediaId }),
     }),
+
+  getCatalogSettings: () =>
+    request<{ settings: import("@/lib/catalog").CatalogSettings }>(
+      "/catalog/settings"
+    ).then((r) => r.settings),
+
+  putCatalogSettings: (body: {
+    whatsappPhone?: string;
+    orderTtlHours?: number | string;
+    publicEnabled?: boolean;
+  }) =>
+    request<{ settings: import("@/lib/catalog").CatalogSettings }>(
+      "/catalog/settings",
+      { method: "PUT", body: JSON.stringify(body) }
+    ).then((r) => r.settings),
+
+  listCatalogOrders: () =>
+    request<{ orders: import("@/lib/catalog").CatalogOrder[] }>(
+      "/catalog/orders"
+    ).then((r) => r.orders),
+
+  patchCatalogOrder: (
+    id: string,
+    status: import("@/lib/catalog").CatalogOrderStatus
+  ) =>
+    request<{ order: import("@/lib/catalog").CatalogOrder }>(
+      `/catalog/orders/${id}`,
+      { method: "PATCH", body: JSON.stringify({ status }) }
+    ).then((r) => r.order),
 };

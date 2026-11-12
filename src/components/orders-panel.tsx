@@ -22,6 +22,7 @@ import {
   type OrderLine,
 } from "@/lib/types";
 import { formatMxn } from "@/lib/utils";
+import { CatalogWebOrders } from "@/components/catalog-web-orders";
 import { useRetailQuery } from "@/lib/use-retail-query";
 
 export function OrdersPanel() {
@@ -44,7 +45,7 @@ export function OrdersPanel() {
             Pedidos
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pedidos a cliente y tickets de POS en un solo listado.
+            Pedidos a cliente, tickets de POS y pedidos del catálogo web.
           </p>
         </div>
         <Button
@@ -66,6 +67,8 @@ export function OrdersPanel() {
           }}
         />
       ) : null}
+
+      <CatalogWebOrders />
 
       <div className="overflow-hidden rounded-xl bg-card/90 ring-1 ring-border/70">
         {loading ? (

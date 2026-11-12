@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { AccountsPanel } from "@/components/accounts-panel";
+import { CatalogSettingsForm } from "@/components/catalog-web-orders";
 import { PriceListsPanel } from "@/components/price-lists-panel";
 import { cn } from "@/lib/utils";
 
-type SettingsTab = "precios" | "cuentas";
+type SettingsTab = "precios" | "cuentas" | "tienda";
 
 export function SettingsPanel() {
   const [tab, setTab] = useState<SettingsTab>("precios");
@@ -13,6 +14,7 @@ export function SettingsPanel() {
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: "precios", label: "Listas de precios" },
     { id: "cuentas", label: "Centro de cuentas" },
+    { id: "tienda", label: "Tienda pública" },
   ];
 
   return (
@@ -25,8 +27,7 @@ export function SettingsPanel() {
           Configuración
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Listas de precios del comercio y centro de cuentas con roles
-          (vendedor, administrador, visitante y superadmin).
+          Listas de precios, centro de cuentas y tienda pública (WhatsApp).
         </p>
       </div>
 
@@ -58,7 +59,9 @@ export function SettingsPanel() {
       </div>
 
       <section className="space-y-4 rounded-xl bg-card/90 p-5 ring-1 ring-border/70 sm:p-6">
-        {tab === "precios" ? <PriceListsPanel /> : <AccountsPanel />}
+        {tab === "precios" ? <PriceListsPanel /> : null}
+        {tab === "cuentas" ? <AccountsPanel /> : null}
+        {tab === "tienda" ? <CatalogSettingsForm /> : null}
       </section>
     </div>
   );
