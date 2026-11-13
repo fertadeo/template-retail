@@ -1,4 +1,5 @@
 import { AURIX_BRAND } from "@/lib/brand";
+import { getPrintSettings, printLayoutCss } from "@/lib/print-settings";
 import type { Order } from "@/lib/types";
 import {
   ORDER_STATUS_LABELS,
@@ -31,7 +32,13 @@ function lineRow(left: string, right: string): string {
   return `<div class="row"><span>${esc(left)}</span><span>${esc(right)}</span></div>`;
 }
 
+function px(n: number, scale: number): number {
+  return Math.round(n * scale * 10) / 10;
+}
+
 function buildTicketHtml(order: Order): string {
+  const print = getPrintSettings();
+  const scale = Math.max(1, print.fontScale);
   const sub = orderSubtotal(order);
   const total = orderTotal(order);
   const pago = order.metodoPago
@@ -77,41 +84,79 @@ function buildTicketHtml(order: Order): string {
   <meta charset="utf-8" />
   <title>Ticket ${esc(order.folio)}</title>
   <style>
-    @page { size: 80mm auto; margin: 2mm; }
+    ${printLayoutCss({ ...print, fontScale: scale })}
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 12px;
-      color: #111;
-      width: 72mm;
-      margin: 0 auto;
-      padding: 2mm 1mm 6mm;
+      font-family: "Courier New", Courier, "Noto Sans Mono", monospace;
+      color: #000;
+      font-weight: 700;
+      line-height: 1.35;
+      padding: 2mm 1mm ${Math.max(2, print.footerMarginMm)}mm;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: none;
     }
     .center { text-align: center; }
-    .brand { font-size: 16px; font-weight: 700; letter-spacing: 0.04em; }
-    .tag { font-size: 10px; margin-top: 2px; }
-    .sep { border-top: 1px dashed #222; margin: 8px 0; }
+    .brand {
+      font-size: ${px(18, scale)}px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .tag {
+      font-size: ${px(11, scale)}px;
+      font-weight: 700;
+      margin-top: 2px;
+      color: #000;
+    }
+    .sep {
+      border-top: 2px dashed #000;
+      margin: 8px 0;
+    }
     .row {
       display: flex;
       justify-content: space-between;
       gap: 6px;
-      margin: 2px 0;
-    }
-    .muted { color: #333; font-size: 11px; }
-    .section-title {
+      margin: 3px 0;
       font-weight: 700;
-      font-size: 11px;
-      margin: 4px 0 2px;
-      letter-spacing: 0.06em;
     }
-    .item { margin: 6px 0; }
-    .item-name { font-weight: 700; }
-    .addr { margin: 4px 0; line-height: 1.35; word-break: break-word; }
-    .total { font-size: 15px; font-weight: 700; margin-top: 4px; }
-    .foot { margin-top: 10px; font-size: 10px; text-align: center; }
-    @media print { body { width: 72mm; } }
+    .muted {
+      color: #000;
+      font-size: ${px(12, scale)}px;
+      font-weight: 700;
+    }
+    .section-title {
+      font-weight: 900;
+      font-size: ${px(12, scale)}px;
+      margin: 4px 0 2px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .item { margin: 7px 0; }
+    .item-name {
+      font-weight: 900;
+      font-size: ${px(13, scale)}px;
+      line-height: 1.3;
+    }
+    .addr {
+      margin: 4px 0;
+      line-height: 1.35;
+      word-break: break-word;
+      font-weight: 700;
+    }
+    .total {
+      font-size: ${px(16, scale)}px;
+      font-weight: 900;
+      margin-top: 5px;
+    }
+    .foot {
+      margin-top: 10px;
+      font-size: ${px(11, scale)}px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
@@ -147,7 +192,7 @@ function buildTicketHtml(order: Order): string {
 }
 
 /**
- * Imprime ticket térmico 80 mm vía iframe oculto.
+ * Imprime ticket térmico vía iframe oculto (ancho según Configuración → Impresora).
  * Evita pop-ups (window.open + noopener devolvía null y dejaba about:blank).
  */
 export function printThermalTicket(order: Order): void {
@@ -181,12 +226,10 @@ export function printThermalTicket(order: Order): void {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
     } finally {
-      // Dar tiempo al diálogo de impresión antes de sacar el iframe
       window.setTimeout(cleanup, 800);
     }
   };
 
-  // Esperar a que el documento del iframe esté listo
   if (iframe.contentDocument?.readyState === "complete") {
     window.setTimeout(runPrint, 50);
   } else {
