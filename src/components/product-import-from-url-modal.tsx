@@ -143,7 +143,7 @@ export function ProductImportFromUrlModal({
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {draft.sku ? `SKU ${draft.sku} · ` : ""}
-                    {categoryLabel(draft.categoria)} ·{" "}
+                    {draft.categoriaNombre || categoryLabel(draft.categoria)} ·{" "}
                     {formatMxn(draft.precio)}
                   </p>
                 </div>

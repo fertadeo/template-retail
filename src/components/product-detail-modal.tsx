@@ -18,7 +18,7 @@ import {
   qrDataUrl,
 } from "@/lib/product-codes";
 import {
-  CATEGORY_LABELS,
+  categoryLabel,
   productImageSrc,
   type Product,
 } from "@/lib/types";
@@ -262,7 +262,7 @@ export function ProductDetailModal({
                       Categoría
                     </dt>
                     <dd className="mt-0.5 font-medium">
-                      {CATEGORY_LABELS[product.categoria]}
+                      {categoryLabel(product.categoria, product.categoriaNombre)}
                     </dd>
                   </div>
                   <div className="rounded-xl bg-muted/50 px-3 py-2.5">

@@ -25,7 +25,9 @@ import {
   type ProductHealthLevel,
 } from "@/lib/product-health";
 import {
+  createCategory,
   getProduct,
+  listCategories,
   listPriceLists,
   listProducts,
   pushMeliProduct,
@@ -33,24 +35,41 @@ import {
   uploadProductImage,
   upsertProduct,
   upsertProductChannelLink,
-  usingRemoteApi,
 } from "@/lib/store";
 import { useRetailQuery } from "@/lib/use-retail-query";
 import {
-  CATEGORY_LABELS,
+  categoryLabel,
   productImageSrc,
+  type Category,
   type Product,
   type ProductCategory,
 } from "@/lib/types";
 import { cn, formatMxn } from "@/lib/utils";
 
-const CATS = Object.keys(CATEGORY_LABELS) as ProductCategory[];
+function categoryOptions(
+  active: Category[],
+  current: string,
+  product?: Product,
+  suggestedName?: string
+): Category[] {
+  if (!current || active.some((c) => c.codigo === current)) return active;
+  return [
+    ...active,
+    {
+      id: `keep-${current}`,
+      codigo: current,
+      nombre: product?.categoriaNombre || suggestedName || categoryLabel(current),
+      activa: false,
+    },
+  ];
+}
 
 type ProductEditorPrefill = {
   nombre: string;
   sku: string;
   descripcion: string;
   categoria: ProductCategory;
+  categoriaNombre?: string;
   precio: number;
   pendingImages: PendingFile[];
 };
@@ -71,6 +90,10 @@ export function ProductsPanel() {
   } = useRetailQuery(() => listProducts(), []);
   const { data: lists, error: listsError } = useRetailQuery(
     () => listPriceLists(true),
+    []
+  );
+  const { data: categories, reload: reloadCategories } = useRetailQuery(
+    () => listCategories(true),
     []
   );
   const [editing, setEditing] = useState<Product | null>(null);
@@ -101,14 +124,13 @@ export function ProductsPanel() {
         dataUrl: img.dataUrl,
         asPrimary: i === 0,
       }));
-    const cat = CATS.includes(draft.categoria as ProductCategory)
-      ? (draft.categoria as ProductCategory)
-      : "otros";
+    const cat = draft.categoria?.trim() || "otros";
     setCreatePrefill({
       nombre: draft.nombre,
       sku: draft.sku,
       descripcion: draft.descripcion,
       categoria: cat,
+      categoriaNombre: draft.categoriaNombre?.trim() || cat,
       precio: draft.precio,
       pendingImages: pending,
     });
@@ -169,10 +191,6 @@ export function ProductsPanel() {
     productId: string,
     channel: "woocommerce" | "mercadolibre"
   ) {
-    if (!usingRemoteApi()) {
-      setSyncMsg("Sync requiere API remota (NEXT_PUBLIC_API_URL).");
-      return;
-    }
     const key = `${channel}:${productId}`;
     setSyncBusy(key);
     setSyncMsg(null);
@@ -307,9 +325,9 @@ export function ProductsPanel() {
               }
             >
               <option value="">Todas</option>
-              {CATS.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
+              {(categories ?? []).map((c) => (
+                <option key={c.id} value={c.codigo}>
+                  {c.nombre}
                 </option>
               ))}
             </select>
@@ -347,6 +365,7 @@ export function ProductsPanel() {
             setEditing(null);
             reload();
           }}
+          onCategoryCreated={reloadCategories}
         />
       ) : null}
 
@@ -437,7 +456,7 @@ export function ProductsPanel() {
                     <ProductHealthDot health={health} />
                   </td>
                   <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
-                    {CATEGORY_LABELS[p.categoria]}
+                    {categoryLabel(p.categoria, p.categoriaNombre)}
                   </td>
                   <td className="px-4 py-3 tabular-nums">
                     {formatMxn(p.precio)}
@@ -526,22 +545,32 @@ function ProductEditor({
   prefill,
   onCancel,
   onSaved,
+  onCategoryCreated,
 }: {
   initial?: Product;
   prefill?: ProductEditorPrefill;
   onCancel: () => void;
   onSaved: () => void;
+  onCategoryCreated?: () => void;
 }) {
   const {
     data: lists,
     loading,
     error: loadError,
   } = useRetailQuery(() => listPriceLists(true), []);
+  const { data: categories, reload: reloadCategories } = useRetailQuery(
+    () => listCategories(true),
+    []
+  );
   const [sku, setSku] = useState(initial?.sku ?? prefill?.sku ?? "");
   const [nombre, setNombre] = useState(initial?.nombre ?? prefill?.nombre ?? "");
   const [categoria, setCategoria] = useState<ProductCategory>(
     initial?.categoria ?? prefill?.categoria ?? "otros"
   );
+  const [newCat, setNewCat] = useState("");
+  const [creatingCat, setCreatingCat] = useState(false);
+  const suggestedCategory =
+    prefill?.categoriaNombre?.trim() || initial?.categoriaNombre?.trim() || "";
   const [precios, setPrecios] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     for (const pl of lists ?? []) {
@@ -574,6 +603,31 @@ function ProductEditor({
       [defaultList.id]: String(prefill.precio),
     }));
   }, [prefill, lists]);
+  useEffect(() => {
+    if (!categories?.length) return;
+    setCategoria((current) => {
+      if (categories.some((c) => c.codigo === current)) return current;
+      const byName = categories.find(
+        (c) =>
+          c.nombre.toLowerCase() === suggestedCategory.toLowerCase() ||
+          c.nombre.toLowerCase() === current.toLowerCase()
+      );
+      if (byName) return byName.codigo;
+      if (initial?.categoria === current || prefill?.categoria === current) {
+        return current;
+      }
+      return categories[0]?.codigo ?? current;
+    });
+    const known = categories.some(
+      (c) =>
+        c.codigo === (prefill?.categoria || initial?.categoria || "") ||
+        (suggestedCategory &&
+          c.nombre.toLowerCase() === suggestedCategory.toLowerCase())
+    );
+    if (!known && suggestedCategory) {
+      setNewCat((current) => current || suggestedCategory);
+    }
+  }, [categories, initial, prefill, suggestedCategory]);
   const [costo, setCosto] = useState(String(initial?.costo ?? 0));
   const [stock, setStock] = useState(String(initial?.stock ?? 0));
   const [descripcion, setDescripcion] = useState(
@@ -601,8 +655,33 @@ function ProductEditor({
       ?.externalId
   );
 
+  async function addCategory(nameOverride?: string) {
+    const name = (nameOverride ?? newCat).trim();
+    if (!name) return;
+    setCreatingCat(true);
+    setError(null);
+    try {
+      const created = await createCategory({ nombre: name });
+      setCategoria(created.codigo);
+      setNewCat("");
+      reloadCategories();
+      onCategoryCreated?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo crear la categoría.");
+    } finally {
+      setCreatingCat(false);
+    }
+  }
+
   async function save() {
     setError(null);
+    if (
+      categories &&
+      !categories.some((c) => c.codigo === categoria)
+    ) {
+      setError("Esa categoría no existe. Creala antes de guardar el producto.");
+      return;
+    }
     setSaving(true);
     try {
       const preciosNum: Record<string, number> = {};
@@ -645,9 +724,7 @@ function ProductEditor({
         });
       }
       const canOfferWooSync =
-        Boolean(initial) &&
-        usingRemoteApi() &&
-        (Boolean(wooId.trim()) || hadWooLink);
+        Boolean(initial) && (Boolean(wooId.trim()) || hadWooLink);
       if (canOfferWooSync) {
         setPendingSyncId(saved.id);
       } else {
@@ -708,14 +785,45 @@ function ProductEditor({
             id="cat"
             className="flex h-10 w-full rounded-lg border border-border bg-card px-3 text-sm"
             value={categoria}
-            onChange={(e) => setCategoria(e.target.value as ProductCategory)}
+            onChange={(e) => setCategoria(e.target.value)}
           >
-            {CATS.map((c) => (
-              <option key={c} value={c}>
-                {CATEGORY_LABELS[c]}
+            {categoryOptions(
+              categories ?? [],
+              categoria,
+              initial,
+              suggestedCategory
+            ).map((c) => (
+              <option key={c.codigo} value={c.codigo}>
+                {c.nombre}
               </option>
             ))}
           </select>
+          {categories && !categories.some((c) => c.codigo === categoria) ? (
+            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              «{suggestedCategory || categoryLabel(categoria)}» no está en las
+              categorías. Creala para usarla en este producto.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Si no está en la lista, creala acá.
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={newCat}
+              onChange={(e) => setNewCat(e.target.value)}
+              placeholder="Nueva categoría"
+              aria-label="Nueva categoría"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={creatingCat || !newCat.trim()}
+              onClick={() => void addCategory()}
+            >
+              {creatingCat ? "…" : "Crear"}
+            </Button>
+          </div>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="nombre">Nombre</Label>

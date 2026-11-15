@@ -86,6 +86,21 @@ export async function setDefaultPriceList(id: string): Promise<PriceList> {
   return api.setDefaultPriceList(id);
 }
 
+export async function listCategories(onlyActive = false) {
+  return api.listCategories(onlyActive);
+}
+
+export async function createCategory(input: { nombre: string; codigo?: string }) {
+  return api.createCategory(input);
+}
+
+export async function updateCategory(
+  id: string,
+  input: { nombre?: string; activa?: boolean }
+) {
+  return api.updateCategory(id, input);
+}
+
 export async function listProducts(): Promise<Product[]> {
   if (!isApiMode()) return memory.listProducts();
   return api.listProducts();

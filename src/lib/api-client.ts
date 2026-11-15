@@ -18,6 +18,7 @@ import type {
   PaymentMethod,
   PriceList,
   Product,
+  Category,
   ProductCategory,
   Quote,
   QuoteStatus,
@@ -166,6 +167,26 @@ export const api = {
       qs ? `/reports/sales-by-vendor?${qs}` : "/reports/sales-by-vendor"
     );
   },
+
+  listCategories: (onlyActive = false) =>
+    request<Category[]>(
+      onlyActive ? "/categories?active=1" : "/categories"
+    ),
+
+  createCategory: (body: { nombre: string; codigo?: string }) =>
+    request<Category>("/categories", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  updateCategory: (
+    id: string,
+    body: Partial<{ nombre: string; activa: boolean }>
+  ) =>
+    request<Category>(`/categories/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
 
   listPriceLists: (onlyActive = false) =>
     request<PriceList[]>(

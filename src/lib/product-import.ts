@@ -6,6 +6,7 @@ export type ImportedProductDraft = {
   descripcion: string;
   precio: number;
   categoria: ProductCategory | string;
+  categoriaNombre?: string;
   sourceUrl: string;
   images: Array<{
     filename: string;

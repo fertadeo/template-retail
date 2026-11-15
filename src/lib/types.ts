@@ -1,8 +1,12 @@
-export type ProductCategory =
-  | "bebidas"
-  | "alimentos"
-  | "limpieza"
-  | "otros";
+/** Código de categoría del comercio. */
+export type ProductCategory = string;
+
+export type Category = {
+  id: string;
+  codigo: string;
+  nombre: string;
+  activa: boolean;
+};
 
 /** Lista de precios diferenciada (minorista, mayorista, custom…). */
 export type PriceList = {
@@ -236,6 +240,7 @@ export type Product = {
   sku: string;
   nombre: string;
   categoria: ProductCategory;
+  categoriaNombre?: string | null;
   /** Precio de la lista default (atajo / compat). */
   precio: number;
   /** Precio por lista: priceListId → monto. */
@@ -331,12 +336,19 @@ export type DashboardStats = {
   ventasPorVendedor?: VendorSalesRow[];
 };
 
-export const CATEGORY_LABELS: Record<ProductCategory, string> = {
+export const CATEGORY_LABELS: Record<string, string> = {
   bebidas: "Bebidas",
   alimentos: "Alimentos",
   limpieza: "Limpieza",
   otros: "Otros",
 };
+
+export function categoryLabel(
+  codigo: string,
+  nombre?: string | null
+): string {
+  return nombre || CATEGORY_LABELS[codigo] || codigo || "Sin categoría";
+}
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   borrador: "Borrador",
