@@ -32,7 +32,6 @@ import {
 } from "@/lib/types";
 import { useBranchScope } from "@/lib/branch-scope-context";
 import { useComercio } from "@/lib/comercio-context";
-import { BRANCHES_ENABLED } from "@/lib/features";
 import { cn, formatMxn } from "@/lib/utils";
 import { useProductPage } from "@/lib/use-product-page";
 import { ProductPagination } from "@/components/product-pagination";
@@ -50,7 +49,7 @@ const selectClass = cn(
 
 export function PosTerminal() {
   const { comercio } = useComercio();
-  const { branchId, vendedorId, branchScope, branches, vendedor } =
+  const { vendedorId, vendedor } =
     useBranchScope();
   const { data: clientData, error: clientsError } = useRetailQuery(() => listClients(), []);
   const clients = clientData ?? [];
@@ -178,11 +177,6 @@ export function PosTerminal() {
         direccionEnvio: direccion,
         telefonoContacto: telefono,
         metodoPago,
-        branchId:
-          branchId ??
-          (branchScope === "all"
-            ? branches.find((b) => b.esDefault)?.id ?? branches[0]?.id ?? null
-            : null),
         vendedorId,
       });
       setLastSale(sale);
@@ -238,25 +232,7 @@ export function PosTerminal() {
           Lista activa:{" "}
           <span className="font-medium text-teal">{listLabel}</span>
           {" · "}
-          {BRANCHES_ENABLED ? (
-            <>
-              Sucursal:{" "}
-              <span className="font-medium text-foreground">
-                {branchId
-                  ? branches.find((b) => b.id === branchId)?.nombre ?? branchId
-                  : branches.find((b) => b.esDefault)?.nombre ??
-                    branches[0]?.nombre ??
-                    "—"}
-              </span>
-            </>
-          ) : (
-            <>
-              Comercio:{" "}
-              <span className="font-medium text-foreground">
-                {comercio?.nombre ?? "—"}
-              </span>
-            </>
-          )}
+          Local: <span className="font-medium text-foreground">{comercio?.nombre ?? "—"}</span>
           {" · "}
           Operador:{" "}
           <span className="font-medium text-foreground">

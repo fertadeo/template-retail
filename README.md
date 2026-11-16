@@ -1,81 +1,40 @@
-# template-retail
+# template-retail — venta local
 
-Gold **Aurix Retail** (frontend Next.js). Template GitHub para el alta Fenec (`repoTemplateFront`).
+Aurix Retail para **un único local**: productos, inventario, clientes, caja (POS),
+pedidos locales, ventas mayoristas, presupuestos, biblioteca, reportes y cuentas.
 
-## Stack
-
-- Next.js 16 · React 19 · Tailwind CSS 4 · TypeScript
-- Datos vía API (`NEXT_PUBLIC_API_URL`) o fallback en memoria (`src/lib/memory-store.ts`)
+No incluye gestión de múltiples comercios, sucursales, stock compartido, tienda
+pública, pedidos web, importación desde URL ni integraciones con marketplaces.
+Las rutas `/comercios`, `/sucursales`, `/canales` y `/tienda` no están disponibles.
 
 ## Desarrollo
 
-```bash
-cp .env.example .env.local
-# Opcional: NEXT_PUBLIC_API_URL=http://127.0.0.1:3852
-npm install
-npm run dev
-```
+Requiere Node >=20.9. Ejecutar `npm ci` y `npm run dev` (puerto 3851).
+Configurar `NEXT_PUBLIC_API_URL` con la URL de `template-retail-api`, sin `/api`.
+Sin esa variable se usa el modo demo local en memoria, sin credenciales reales.
 
-App en [http://127.0.0.1:3851](http://127.0.0.1:3851).
+Con API, el login usa las cuentas activas del local. El sidebar muestra nombre,
+rol, email y Cerrar sesión. La cookie HttpOnly `aurix_session` dura hasta 8 horas;
+reiniciar la API requiere ingresar de nuevo. El operador de caja es la cuenta
+conectada: no hay selector de comercios, sucursales ni otro operador.
 
-Sin `NEXT_PUBLIC_API_URL` corre en **modo demo** (memoria).  
-Con URL apunta al gold API (`/api/*` de `template-retail-api`).
+## Catálogo y biblioteca
 
-## Conexión al API (alta Fenec)
+- Productos y POS: páginas de 40; POS prioriza SKU exacto.
+- Contadores de salud separados de la consulta de página.
+- Biblioteca: páginas de 24, búsqueda en servidor, carga diferida, miniaturas
+  locales y originales al abrir/descargar. Incluye cantidad, peso registrado y
+  cantidad sin tamaño conocido para toda la búsqueda.
+- Los originales remotos existentes conservan su URL; no se sincronizan canales.
+- Las consultas esperan la inicialización del local y descartan resultados obsoletos.
 
-```
-NEXT_PUBLIC_API_URL=http://{slug}.api.aurixerp.com
-```
+El perfil del local se obtiene desde `/api/business`. Los identificadores internos
+`comercio_id` y columnas históricas se conservan por compatibilidad del esquema,
+pero no habilitan selección ni administración de otros locales.
 
-Cliente HTTP: `src/lib/api-client.ts` · store: `src/lib/store.ts`.
+Actualizar frontend y API de forma coordinada. Next transmite llamadas y cookies
+por `/aurix-api` y sirve los archivos autenticados mediante `/api/media/:path*`.
+La API requiere `npm ci` para Sharp; no hay migraciones nuevas de esta adaptación.
+Actualizar un template no modifica automáticamente instalaciones ya provisionadas.
 
-## Módulos
-
-| Ruta | Uso |
-|------|-----|
-| `/` | Dashboard / KPIs |
-| `/productos` | SKUs, semáforo, ficha, imágenes, sync canales |
-| `/clientes` | Agenda |
-| `/presupuestos` | Presupuestos |
-| `/biblioteca` | Media library |
-| `/pedidos` | Pedidos + historial POS |
-| `/pos` | Terminal de caja |
-| `/mayorista` | Pedidos B2B |
-| `/reportes` | Ventas por vendedor |
-| `/comercios` | Multicomercio + papelera |
-| `/canales` | WooCommerce / Mercado Libre (pull, push, notificaciones) |
-| `/configuracion` | Listas de precios · cuentas |
-| `/sucursales` | Opcional (`BRANCHES_ENABLED`) |
-
-UX viva: `docs/UX_UI.md`. Push de agentes: a **`main`**.
-
-## Template GitHub
-
-Marcado como **Template repository** para el alta (`repoTemplateFront`).
-Sincronizado desde mejoras validadas en instancias (p. ej. Musicanoba).
-
-
-## Cuenta y carga de catálogo
-
-Con `NEXT_PUBLIC_API_URL`, el sistema requiere login con una cuenta activa de la API.
-El sidebar muestra nombre, rol, Mi cuenta (email) y Cerrar sesión. La sesión usa
-cookie HttpOnly `aurix_session`, vence a las 8 horas y se pierde al reiniciar la API.
-La tienda `/tienda` continúa pública. El login usa marca genérica Aurix Retail.
-
-Sin API configurada se conserva el modo demo local: no solicita credenciales reales,
-el sidebar indica Demo local y los productos/medios se paginan en memoria.
-La demo no implementa una sesión autenticada y no muestra Cerrar sesión.
-
-`/productos` y `/pos` solicitan páginas de 40 productos; POS prioriza SKU exacto.
-La biblioteca solicita 24 medios por página, sin base64 en los listados remotos,
-con miniaturas locales y descarga del original al abrirlo. Los medios remotos
-conservan su URL. Muestra cantidad y peso registrado de toda la búsqueda, junto
-al número de archivos sin tamaño registrado. Los contadores de salud se cargan
-por separado y no bloquean la grilla ni se recalculan al cambiar de página.
-
-Actualizar API y frontend de manera coordinada: se incorpora el rewrite autenticado
-`/api/media/:path*`. La API requiere `npm ci` para instalar Sharp y Node >=20.9.
-No hay migraciones nuevas. Ver README de template-retail-api para métricas
-Server-Timing y logs de lecturas lentas. Estas mejoras aplican a nuevas instancias
-provisionadas desde los templates; las instancias existentes requieren actualizar
-su código y desplegarlo.
+Ver `docs/UX_UI.md` para el alcance de la interfaz.

@@ -9,11 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "@/lib/api-client";
+import { listUsers as listDemoUsers } from "@/lib/memory-store";
 import { isApiMode } from "@/lib/api-config";
 import type { Branch, UserAccount } from "@/lib/types";
 
-const BRANCH_KEY = "retail360.branchScope";
-const VENDEDOR_KEY = "retail360.vendedorId";
 
 /** "all" = todas las sucursales (admin/superadmin). */
 export type BranchScope = "all" | string;
@@ -45,80 +44,16 @@ export function BranchScopeProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const run = async () => {
       try {
-        if (!isApiMode()) {
-          const demoBranches: Branch[] = [
-            {
-              id: "br_musicanoba",
-              codigo: "musicanoba",
-              nombre: "Musicanoba",
-              direccion: "",
-              rubro: "Tecnología",
-              activa: true,
-              esDefault: true,
-            },
-            {
-              id: "br_mi_espacio",
-              codigo: "mi-espacio",
-              nombre: "Mi Espacio",
-              direccion: "",
-              rubro: "Tecnología",
-              activa: true,
-              esDefault: false,
-            },
-            {
-              id: "br_bella_dona",
-              codigo: "bella-dona",
-              nombre: "Bella Dona",
-              direccion: "",
-              rubro: "Bijouterie",
-              activa: true,
-              esDefault: false,
-            },
-          ];
-          setBranches(demoBranches);
-          setVendedores([]);
-          setBranchScopeState("all");
-          return;
-        }
-        const [br, users] = await Promise.all([
-          api.listBranches(true),
-          api.listUsers(true).catch(() => [] as UserAccount[]),
-        ]);
-        setBranches(br);
-        const sellers = users.filter(
-          (u) =>
-            u.activa &&
-            (u.role === "vendedor" ||
-              u.role === "administrador" ||
-              u.role === "superadmin")
-        );
-        setVendedores(sellers);
-
-        const storedBranch =
-          typeof window !== "undefined"
-            ? localStorage.getItem(BRANCH_KEY)
-            : null;
-        const nextScope: BranchScope =
-          storedBranch === "all" || !storedBranch
-            ? "all"
-            : br.some((b) => b.id === storedBranch)
-              ? storedBranch
-              : "all";
-        setBranchScopeState(nextScope);
-
-        const storedVend =
-          typeof window !== "undefined"
-            ? localStorage.getItem(VENDEDOR_KEY)
-            : null;
-        const nextVend =
-          sellers.find((u) => u.id === storedVend)?.id ??
-          sellers[0]?.id ??
-          null;
-        setVendedorIdState(nextVend);
-        if (nextVend) localStorage.setItem(VENDEDOR_KEY, nextVend);
-      } finally {
-        setLoading(false);
-      }
+        const users: UserAccount[] = isApiMode()
+          ? [await api.getSession().then(({ user }) => ({ ...user, activa: true,
+              branchIds: [], functions: [], createdAt: "", updatedAt: "" }))]
+          : listDemoUsers(true);
+        setBranches([]);
+        setVendedores(users);
+        setBranchScopeState("all");
+        const current = users[0]?.id ?? null;
+        setVendedorIdState(current);
+      } finally { setLoading(false); }
     };
     void run();
   }, []);
@@ -127,20 +62,8 @@ export function BranchScopeProvider({ children }: { children: ReactNode }) {
     reload();
   }, [reload]);
 
-  function setBranchScope(scope: BranchScope) {
-    setBranchScopeState(scope);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(BRANCH_KEY, scope);
-    }
-  }
-
-  function setVendedorId(id: string | null) {
-    setVendedorIdState(id);
-    if (typeof window !== "undefined") {
-      if (id) localStorage.setItem(VENDEDOR_KEY, id);
-      else localStorage.removeItem(VENDEDOR_KEY);
-    }
-  }
+  function setBranchScope() { setBranchScopeState("all"); }
+  function setVendedorId() { return; }
 
   const branchId = branchScope === "all" ? null : branchScope;
   const vendedor = vendedores.find((u) => u.id === vendedorId) ?? null;

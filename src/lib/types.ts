@@ -180,9 +180,6 @@ export const APP_FUNCTIONS: AppFunctionMeta[] = [
   { code: "pedidos", label: "Pedidos" },
   { code: "mayorista", label: "Mayorista" },
   { code: "pos", label: "POS" },
-  { code: "comercios", label: "Comercios" },
-  { code: "sucursales", label: "Sucursales" },
-  { code: "canales", label: "Canales" },
   { code: "configuracion", label: "Configuración" },
 ];
 

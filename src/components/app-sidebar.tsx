@@ -9,16 +9,12 @@ import {
   FileText,
   Images,
   LayoutDashboard,
-  MapPin,
   Package,
-  Radio,
   Settings,
   ShoppingBag,
-  Store,
   Users,
   Warehouse,
 } from "lucide-react";
-import { BRANCHES_ENABLED } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -31,11 +27,6 @@ const NAV = [
   { href: "/mayorista", label: "Mayorista", icon: Building2 },
   { href: "/pos", label: "POS", icon: ShoppingBag },
   { href: "/reportes", label: "Reportes", icon: ChartColumn },
-  { href: "/comercios", label: "Comercios", icon: Store },
-  ...(BRANCHES_ENABLED
-    ? [{ href: "/sucursales", label: "Sucursales", icon: MapPin }]
-    : []),
-  { href: "/canales", label: "Canales", icon: Radio },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 export function AppSidebar({
@@ -68,7 +59,7 @@ export function AppSidebar({
             <p className="font-display text-2xl font-semibold tracking-tight text-[#f2eee6]">
               Aurix<span className="text-[#5eead4]">.</span>
             </p>
-            <p className="mt-0.5 text-xs text-sand/60">Retail · mostrador</p>
+            <p className="mt-0.5 text-xs text-sand/60">Retail · venta local</p>
           </Link>
         </div>
         <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-4">

@@ -12,7 +12,6 @@ import { api } from "@/lib/api-client";
 import { isApiMode } from "@/lib/api-config";
 import type { Comercio } from "@/lib/types";
 
-const STORAGE_KEY = "retail360.comercioId";
 
 type Ctx = {
   comercios: Comercio[];
@@ -39,7 +38,7 @@ export function ComercioProvider({ children }: { children: ReactNode }) {
             {
               id: "co_principal",
               codigo: "principal",
-              nombre: "Comercio principal",
+              nombre: "Venta local",
               rubro: "",
               direccion: "",
               activa: true,
@@ -50,19 +49,9 @@ export function ComercioProvider({ children }: { children: ReactNode }) {
           setComercioIdState(demo[0].id);
           return;
         }
-        const list = await api.listComercios(true);
-        setComercios(list);
-        const stored =
-          typeof window !== "undefined"
-            ? localStorage.getItem(STORAGE_KEY)
-            : null;
-        const next =
-          list.find((c) => c.id === stored)?.id ??
-          list.find((c) => c.esDefault)?.id ??
-          list[0]?.id ??
-          null;
-        setComercioIdState(next);
-        if (next) localStorage.setItem(STORAGE_KEY, next);
+        const business = await api.getLocalBusiness();
+        setComercios([business]);
+        setComercioIdState(business.id);
       } finally {
         setLoading(false);
       }
@@ -74,12 +63,8 @@ export function ComercioProvider({ children }: { children: ReactNode }) {
     reload();
   }, [reload]);
 
-  function setComercioId(id: string) {
-    setComercioIdState(id);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, id);
-    }
-  }
+  // Compatibility for local data hooks: the profile cannot be switched.
+  function setComercioId() { return; }
 
   const comercio = comercios.find((c) => c.id === comercioId) ?? null;
 

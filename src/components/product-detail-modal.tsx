@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, Printer, QrCode, X } from "lucide-react";
+import { Printer, QrCode, X } from "lucide-react";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { ModalPortal } from "@/components/modal-portal";
 import { ProductHealthDot } from "@/components/status-dot";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { productHealth } from "@/lib/product-health";
-import { listChannels, listPriceLists } from "@/lib/store";
+import { listPriceLists } from "@/lib/store";
 import { useRetailQuery } from "@/lib/use-retail-query";
 import {
   barcodeSvgDataUrl,
@@ -23,17 +23,6 @@ import {
   type Product,
 } from "@/lib/types";
 import { cn, formatMxn } from "@/lib/utils";
-
-/** URL pública del producto en WooCommerce (WP redirige ?p= al permalink). */
-export function wooProductStoreUrl(
-  storeUrl: string | null | undefined,
-  externalId: string | null | undefined
-): string | null {
-  const base = (storeUrl ?? "").trim().replace(/\/$/, "");
-  const id = (externalId ?? "").trim();
-  if (!base || !id) return null;
-  return `${base}/?p=${encodeURIComponent(id)}`;
-}
 
 export function ProductDetailModal({
   product,
@@ -59,7 +48,6 @@ export function ProductDetailModal({
     loading: listsLoading,
     error: listsError,
   } = useRetailQuery(() => listPriceLists(true), []);
-  const { data: channels } = useRetailQuery(() => listChannels(), []);
   const code = productBarcodeValue(product);
   const health = useMemo(() => productHealth(product), [product]);
 
@@ -84,12 +72,6 @@ export function ProductDetailModal({
     }
     return items;
   }, [product]);
-
-  const wooStoreUrl = useMemo(() => {
-    const woo = channels?.find((c) => c.channel === "woocommerce");
-    const link = product.channelLinks?.find((l) => l.channel === "woocommerce");
-    return wooProductStoreUrl(woo?.storeUrl, link?.externalId);
-  }, [channels, product.channelLinks]);
 
   useEffect(() => {
     setActiveSrc(productImageSrc(product.imagenPrincipal) ?? gallery[0]?.src ?? null);
@@ -417,18 +399,6 @@ export function ProductDetailModal({
           </div>
 
           <footer className="flex shrink-0 flex-wrap gap-2 border-t border-border/60 px-4 py-3 sm:px-6">
-            {wooStoreUrl ? (
-              <a
-                href={wooStoreUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Abrir ficha en WooCommerce"
-                className={cn(buttonVariants({ variant: "outline" }), "gap-1.5")}
-              >
-                <ExternalLink className="size-3.5" />
-                Ver en sitio web
-              </a>
-            ) : null}
             <Button
               type="button"
               variant="outline"

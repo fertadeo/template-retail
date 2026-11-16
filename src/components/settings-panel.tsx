@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { AccountsPanel } from "@/components/accounts-panel";
-import { CatalogSettingsForm } from "@/components/catalog-web-orders";
 import { CategoriesPanel } from "@/components/categories-panel";
 import { PriceListsPanel } from "@/components/price-lists-panel";
 import { PrintPaperSettings } from "@/components/print-paper-settings";
 import { cn } from "@/lib/utils";
 
-type SettingsTab = "impresora" | "precios" | "categorias" | "cuentas" | "tienda";
+type SettingsTab = "impresora" | "precios" | "categorias" | "cuentas";
 
 export function SettingsPanel() {
   const [tab, setTab] = useState<SettingsTab>("impresora");
@@ -18,7 +17,6 @@ export function SettingsPanel() {
     { id: "precios", label: "Listas de precios" },
     { id: "categorias", label: "Categorías" },
     { id: "cuentas", label: "Centro de cuentas" },
-    { id: "tienda", label: "Tienda pública" },
   ];
 
   return (
@@ -31,8 +29,7 @@ export function SettingsPanel() {
           Configuración
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Papel de impresora, listas de precios, categorías, centro de cuentas
-          y tienda pública (WhatsApp).
+          Impresora, listas de precios, categorías y cuentas del local.
         </p>
       </div>
 
@@ -70,7 +67,6 @@ export function SettingsPanel() {
           {tab === "precios" ? <PriceListsPanel /> : null}
           {tab === "categorias" ? <CategoriesPanel /> : null}
           {tab === "cuentas" ? <AccountsPanel /> : null}
-          {tab === "tienda" ? <CatalogSettingsForm /> : null}
         </section>
       ) : null}
     </div>
