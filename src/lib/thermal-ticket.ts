@@ -99,6 +99,7 @@ function buildTicketHtml(order: Order): string {
     }
     .center { text-align: center; }
     .brand {
+      overflow-wrap: anywhere;
       font-size: ${px(18, scale)}px;
       font-weight: 900;
       letter-spacing: 0.06em;
@@ -161,7 +162,7 @@ function buildTicketHtml(order: Order): string {
 </head>
 <body>
   <div class="center">
-    <div class="brand">${esc(AURIX_BRAND.name)}</div>
+    <div class="brand">${esc(print.businessName)}</div>
     <div class="tag">${esc(AURIX_BRAND.tagline)}</div>
     <div class="tag">${esc(AURIX_BRAND.contact.web)}</div>
   </div>

@@ -6,6 +6,8 @@
 export type PaperPresetId = "58mm" | "80mm" | "custom";
 
 export type PrintSettings = {
+  /** Encabezado editable de tickets y etiquetas de producto. */
+  businessName: string;
   preset: PaperPresetId;
   /** Ancho del rollo / página en mm. */
   paperWidthMm: number;
@@ -43,6 +45,7 @@ export const PAPER_PRESETS: Array<{
 ];
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
+  businessName: "Aurix",
   preset: "80mm",
   paperWidthMm: 80,
   marginMm: 2,
@@ -61,6 +64,9 @@ function clamp(n: number, min: number, max: number): number {
 export function normalizePrintSettings(
   partial: Partial<PrintSettings> | null | undefined
 ): PrintSettings {
+  const businessName = typeof partial?.businessName === "string"
+    ? partial.businessName.trim().slice(0, 120) || DEFAULT_PRINT_SETTINGS.businessName
+    : DEFAULT_PRINT_SETTINGS.businessName;
   const preset = partial?.preset ?? DEFAULT_PRINT_SETTINGS.preset;
   const fromPreset = PAPER_PRESETS.find((p) => p.id === preset);
 
@@ -83,6 +89,7 @@ export function normalizePrintSettings(
 
   if (preset !== "custom" && fromPreset) {
     return {
+      businessName,
       preset: fromPreset.id,
       paperWidthMm: fromPreset.paperWidthMm,
       marginMm: fromPreset.marginMm,
@@ -110,6 +117,7 @@ export function normalizePrintSettings(
   );
 
   return {
+    businessName,
     preset: "custom",
     paperWidthMm,
     marginMm,

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AURIX_BRAND } from "@/lib/brand";
+import { useComercio } from "@/lib/comercio-context";
 import {
   DEFAULT_PRINT_SETTINGS,
   PAPER_PRESETS,
@@ -98,13 +99,13 @@ function TicketPreview({ settings }: { settings: PrintSettings }) {
           >
             <div className="text-center">
               <p
-                className="uppercase tracking-[0.06em]"
+                className="break-words uppercase tracking-[0.06em]"
                 style={{
                   fontSize: `${Math.round(18 * settings.fontScale * 10) / 10}px`,
                   fontWeight: 900,
                 }}
               >
-                {AURIX_BRAND.name}
+                {settings.businessName}
               </p>
               {AURIX_BRAND.contact.web ? (
                 <p
@@ -235,6 +236,7 @@ function TicketPreview({ settings }: { settings: PrintSettings }) {
 }
 
 export function PrintPaperSettings() {
+  const { comercio } = useComercio();
   const [settings, setSettings] = useState<PrintSettings>(DEFAULT_PRINT_SETTINGS);
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -261,6 +263,7 @@ export function PrintPaperSettings() {
     if (!preset) return;
     setSettings(
       normalizePrintSettings({
+        businessName: settings.businessName,
         preset: preset.id,
         paperWidthMm: preset.paperWidthMm,
         marginMm: preset.marginMm,
@@ -272,13 +275,17 @@ export function PrintPaperSettings() {
   }
 
   function save() {
+    if (!settings.businessName.trim()) {
+      setMessage("Ingresá el nombre que querés mostrar en las impresiones.");
+      return;
+    }
     const saved = savePrintSettings(settings);
     setSettings(saved);
     setMessage(`Guardado: ${printSettingsSummary(saved)}`);
   }
 
   function resetDefaults() {
-    const saved = savePrintSettings(DEFAULT_PRINT_SETTINGS);
+    const saved = savePrintSettings({ ...DEFAULT_PRINT_SETTINGS, businessName: settings.businessName });
     setSettings(saved);
     setMessage("Se restauró el papel 80 mm.");
   }
@@ -295,12 +302,38 @@ export function PrintPaperSettings() {
     <section className="space-y-4 rounded-xl bg-card/90 p-5 ring-1 ring-border/70 sm:p-6">
       <div>
         <h2 className="font-display text-lg font-medium text-charcoal">
-          Papel de impresora
+          Impresora y datos de impresión
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Calibrá el ancho del rollo térmico para tickets POS y etiquetas.
           Se guarda en este equipo.
         </p>
+      </div>
+
+      <div className="space-y-2 rounded-xl border border-border p-4">
+        <Label htmlFor="print-business-name">Nombre del negocio en las impresiones</Label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="print-business-name"
+            value={settings.businessName}
+            maxLength={120}
+            placeholder="Nombre de tu negocio"
+            onChange={event => {
+              setSettings(current => ({ ...current, businessName: event.target.value }));
+              setMessage(null);
+            }}
+          />
+          {comercio?.nombre ? <Button
+            type="button"
+            variant="outline"
+            className="shrink-0"
+            onClick={() => {
+              setSettings(current => ({ ...current, businessName: comercio.nombre }));
+              setMessage(null);
+            }}
+          >Usar nombre del negocio</Button> : null}
+        </div>
+        <p className="text-xs text-muted-foreground">Se muestra en el encabezado de tickets y etiquetas de productos. Podés editarlo cuando lo necesites; pulsá Guardar configuración para aplicarlo en este equipo.</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -460,7 +493,7 @@ export function PrintPaperSettings() {
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" onClick={save}>
-          Guardar papel
+          Guardar configuración
         </Button>
         <Button type="button" variant="outline" onClick={resetDefaults}>
           Restaurar 80 mm

@@ -38,3 +38,19 @@ La API requiere `npm ci` para Sharp; no hay migraciones nuevas de esta adaptaci�
 Actualizar un template no modifica automáticamente instalaciones ya provisionadas.
 
 Ver `docs/UX_UI.md` para el alcance de la interfaz.
+
+## Modal de productos
+
+Alta y edición comparten un modal adaptable con datos, precios, stock y galería.
+Las imágenes se pueden agregar, quitar y seleccionar como portada antes de
+guardar; Escape y clic fuera siempre solicitan confirmación para salir. Las
+fotos se optimizan antes de subir y los reintentos conservan las operaciones
+ya confirmadas. Los campos numéricos muestran el cero como placeholder.
+
+## Nombre en las impresiones
+
+Configuración → Impresora permite editar el nombre del negocio que encabeza
+las etiquetas de producto (barras y QR) y los tickets térmicos. Se puede tomar
+el nombre del negocio registrado o escribir otro. Guardar configuración aplica
+el cambio en este equipo, junto con las preferencias de papel. Cambiar el
+tamaño de papel o restaurar 80 mm conserva el nombre elegido.

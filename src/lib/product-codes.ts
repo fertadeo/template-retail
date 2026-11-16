@@ -80,7 +80,7 @@ export async function printProductLabel(
 
   const labelBody = `
     <div class="label">
-      <div class="brand">${esc(AURIX_BRAND.name)}</div>
+      <div class="brand">${esc(print.businessName)}</div>
       <div class="name">${esc(product.nombre)}</div>
       <div class="meta">${esc(product.sku)} · ${esc(formatMxn(product.precio))}</div>
       ${mediaBlock}
@@ -108,6 +108,7 @@ export async function printProductLabel(
     }
     .label:last-child { page-break-after: auto; }
     .brand {
+      overflow-wrap: anywhere;
       font-size: ${Math.round(13 * print.fontScale * 10) / 10}px;
       font-weight: 900;
       letter-spacing: 0.08em;
