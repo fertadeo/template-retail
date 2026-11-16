@@ -4,9 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { isApiMode } from "@/lib/api-config";
-import { useBranchScope } from "@/lib/branch-scope-context";
 import { useComercio } from "@/lib/comercio-context";
-import { BRANCHES_ENABLED } from "@/lib/features";
 import { dashboardStats, listOrders } from "@/lib/store";
 import { useRetailQuery } from "@/lib/use-retail-query";
 import { ORDER_STATUS_LABELS, orderTotal } from "@/lib/types";
@@ -19,12 +17,7 @@ export function DashboardHome() {
   }, []);
 
   const { comercio } = useComercio();
-  const { branchScope, branches } = useBranchScope();
-  const scopeLabel = BRANCHES_ENABLED
-    ? branchScope === "all"
-      ? "Todas las sucursales"
-      : branches.find((b) => b.id === branchScope)?.nombre ?? "Sucursal"
-    : comercio?.nombre ?? "Comercio activo";
+  const scopeLabel = comercio?.nombre ?? "Venta local";
 
   const statsQ = useRetailQuery(() => dashboardStats(today), [today]);
   const ordersQ = useRetailQuery(() => listOrders(), []);
@@ -110,9 +103,7 @@ export function DashboardHome() {
                 <p className="font-medium text-foreground">{v.vendedorNombre}</p>
                 <p className="text-xs text-muted-foreground">
                   {v.tickets} ticket{v.tickets === 1 ? "" : "s"}
-                  {BRANCHES_ENABLED && v.branchNombre
-                    ? ` · ${v.branchNombre}`
-                    : ""}
+
                 </p>
               </div>
               <p className="text-sm font-medium tabular-nums">
@@ -154,9 +145,7 @@ export function DashboardHome() {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {ORDER_STATUS_LABELS[o.status]} · {o.canal.toUpperCase()}
-                  {BRANCHES_ENABLED && o.branchNombre
-                    ? ` · ${o.branchNombre}`
-                    : ""}
+
                   {o.vendedorNombre ? ` · ${o.vendedorNombre}` : ""}
                 </p>
               </div>

@@ -18,7 +18,7 @@ const syne = Syne({
 export const metadata: Metadata = {
   title: "Retail 360",
   description:
-    "Retail 360: multicomercio, catálogo, POS, sync WooCommerce y Mercado Libre.",
+    "Retail 360: venta local, inventario, clientes, caja y presupuestos.",
 };
 
 export default function RootLayout({

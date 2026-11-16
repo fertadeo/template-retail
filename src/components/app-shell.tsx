@@ -10,19 +10,11 @@ import {
   useBranchScope,
 } from "@/lib/branch-scope-context";
 import { ComercioProvider, useComercio } from "@/lib/comercio-context";
-import { BRANCHES_ENABLED } from "@/lib/features";
 
 function ShellInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { comercios, comercioId, setComercioId, comercio } = useComercio();
-  const {
-    branches,
-    branchScope,
-    setBranchScope,
-    vendedores,
-    vendedorId,
-    setVendedorId,
-  } = useBranchScope();
+  const { comercio } = useComercio();
+  const { vendedor } = useBranchScope();
 
   return (
     <div className="aurix-atmosphere relative flex h-dvh max-h-dvh min-h-0 overflow-hidden">
@@ -46,66 +38,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           <p className="font-display text-lg font-semibold text-charcoal lg:hidden">
             Aurix<span className="text-teal">.</span> Retail 360
           </p>
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-            <label className="hidden text-xs text-muted-foreground sm:inline">
-              Comercio
-            </label>
-            <select
-              className="h-9 max-w-[12rem] rounded-lg border border-border bg-card px-2 text-sm"
-              value={comercioId ?? ""}
-              onChange={(e) => setComercioId(e.target.value)}
-              title={comercio?.rubro || "Comercio activo"}
-            >
-              {comercios.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                  {c.rubro ? ` · ${c.rubro}` : ""}
-                </option>
-              ))}
-            </select>
-
-            {BRANCHES_ENABLED ? (
-              <>
-                <label className="hidden text-xs text-muted-foreground md:inline">
-                  Sucursal
-                </label>
-                <select
-                  className="h-9 max-w-[12rem] rounded-lg border border-border bg-card px-2 text-sm"
-                  value={branchScope}
-                  onChange={(e) => setBranchScope(e.target.value)}
-                  title="Alcance: todas o una sucursal"
-                >
-                  <option value="all">Todas las sucursales</option>
-                  {branches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.nombre}
-                      {b.rubro ? ` · ${b.rubro}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </>
-            ) : null}
-
-            {vendedores.length > 0 ? (
-              <>
-                <label className="hidden text-xs text-muted-foreground lg:inline">
-                  Operador
-                </label>
-                <select
-                  className="h-9 max-w-[11rem] rounded-lg border border-border bg-card px-2 text-sm"
-                  value={vendedorId ?? ""}
-                  onChange={(e) => setVendedorId(e.target.value || null)}
-                  title="Vendedor / operador de caja"
-                >
-                  <option value="">Sin asignar</option>
-                  {vendedores.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nombre}
-                    </option>
-                  ))}
-                </select>
-              </>
-            ) : null}
+          <div className="ml-auto text-right text-sm">
+            <p className="font-medium text-charcoal">{comercio?.nombre ?? "Venta local"}</p>
+            {vendedor ? <p className="text-xs text-muted-foreground">Operador: {vendedor.nombre}</p> : null}
           </div>
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -120,7 +55,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (pathname === "/login" || pathname === "/tienda" || pathname?.startsWith("/tienda/")) {
+  if (pathname === "/login") {
     return <>{children}</>;
   }
   return (

@@ -6,8 +6,6 @@ import { ProductPagination } from "@/components/product-pagination";
 import { productHealthCounts } from "@/lib/catalog-data";
 import { useCatalogQuery } from "@/lib/use-catalog-query";
 import { Pencil } from "lucide-react";
-import { ConfirmModal } from "@/components/confirm-modal";
-import { ProductImportFromUrlModal } from "@/components/product-import-from-url-modal";
 import {
   ProductImagesEditor,
   type PendingFile,
@@ -19,10 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  dataUrlByteSize,
-  type ImportedProductDraft,
-} from "@/lib/product-import";
-import {
   HEALTH_FILTERS,
   healthDotClass,
   productHealth,
@@ -33,11 +27,8 @@ import {
   getProduct,
   listCategories,
   listPriceLists,
-  pushMeliProduct,
-  pushWooProduct,
   uploadProductImage,
   upsertProduct,
-  upsertProductChannelLink,
 } from "@/lib/store";
 import { useRetailQuery } from "@/lib/use-retail-query";
 import {
@@ -67,16 +58,6 @@ function categoryOptions(
   ];
 }
 
-type ProductEditorPrefill = {
-  nombre: string;
-  sku: string;
-  descripcion: string;
-  categoria: ProductCategory;
-  categoriaNombre?: string;
-  precio: number;
-  pendingImages: PendingFile[];
-};
-
 type SortKey =
   | "nombre"
   | "recent"
@@ -92,18 +73,13 @@ export function ProductsPanel() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<Product | null>(null);
-  const [syncMsg, setSyncMsg] = useState<string | null>(null);
-  const [syncBusy, setSyncBusy] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"" | ProductCategory>("");
   const [healthFilter, setHealthFilter] = useState<ProductHealthLevel | "all">(
     "all"
   );
   const [sort, setSort] = useState<SortKey>("nombre");
-  const [importOpen, setImportOpen] = useState(false);
-  const [createPrefill, setCreatePrefill] =
-    useState<ProductEditorPrefill | null>(null);
-
   const { data: productPage, loading, error, reload, version, page, setPage } = useProductPage({
     q: query.trim(), category, health: healthFilter, sort, pageSize: 40,
   });
@@ -113,62 +89,12 @@ export function ProductsPanel() {
   );
   const filtered = productPage?.items ?? [];
 
-  function applyImportDraft(draft: ImportedProductDraft) {
-    const pending: PendingFile[] = draft.images
-      .filter((img): img is typeof img & { dataUrl: string } =>
-        Boolean(img.dataUrl)
-      )
-      .map((img, i) => ({
-        key: `import-${i}-${img.filename}`,
-        filename: img.filename,
-        mime: img.mime,
-        sizeBytes: dataUrlByteSize(img.dataUrl),
-        dataUrl: img.dataUrl,
-        asPrimary: i === 0,
-      }));
-    const cat = draft.categoria?.trim() || "otros";
-    setCreatePrefill({
-      nombre: draft.nombre,
-      sku: draft.sku,
-      descripcion: draft.descripcion,
-      categoria: cat,
-      categoriaNombre: draft.categoriaNombre?.trim() || cat,
-      precio: draft.precio,
-      pendingImages: pending,
-    });
-    setCreating(true);
-    setEditing(null);
-    setDetail(null);
-  }
-
   async function openDetail(p: Product) {
     setDetail(p);
     const full = await getProduct(p.id);
     if (full) setDetail(full);
   }
 
-  async function syncChannel(
-    productId: string,
-    channel: "woocommerce" | "mercadolibre"
-  ) {
-    const key = `${channel}:${productId}`;
-    setSyncBusy(key);
-    setSyncMsg(null);
-    try {
-      if (channel === "woocommerce") {
-        const r = await pushWooProduct(productId, "both");
-        setSyncMsg(`WC #${r.externalId}: stock ${r.stock} · $${r.price}`);
-      } else {
-        const r = await pushMeliProduct(productId, "both");
-        setSyncMsg(`ML ${r.externalId}: stock ${r.stock} · $${r.price}`);
-      }
-      reload();
-    } catch (e) {
-      setSyncMsg(e instanceof Error ? e.message : "Error de sync.");
-    } finally {
-      setSyncBusy(null);
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -181,26 +107,16 @@ export function ProductsPanel() {
             Productos
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Alta, ficha QR y sync a WooCommerce / Mercado Libre. El semáforo
+            Alta de productos y etiquetas QR para la venta local. El semáforo
             marca si falta foto, precio u otros datos.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
-            variant="outline"
-            size="lg"
-            className="h-10"
-            onClick={() => setImportOpen(true)}
-          >
-            Desde URL
-          </Button>
-          <Button
-            type="button"
             size="lg"
             className="h-10"
             onClick={() => {
-              setCreatePrefill(null);
               setCreating(true);
               setEditing(null);
               setDetail(null);
@@ -210,12 +126,6 @@ export function ProductsPanel() {
           </Button>
         </div>
       </div>
-
-      <ProductImportFromUrlModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onApply={applyImportDraft}
-      />
 
       <div className="flex flex-col gap-3">
         <div
@@ -313,14 +223,11 @@ export function ProductsPanel() {
       {creating || editing ? (
         <ProductEditor
           initial={editing ?? undefined}
-          prefill={creating && !editing ? createPrefill ?? undefined : undefined}
           onCancel={() => {
-            setCreatePrefill(null);
             setCreating(false);
             setEditing(null);
           }}
           onSaved={() => {
-            setCreatePrefill(null);
             setCreating(false);
             setEditing(null);
             reload();
@@ -342,9 +249,9 @@ export function ProductsPanel() {
       ) : null}
 
       {countsError ? <p role="status" className="text-sm text-muted-foreground">No se pudieron cargar los contadores de estado.</p> : null}
-      {syncMsg ? (
+      {actionError ? (
         <p className="rounded-lg bg-tealSoft/60 px-3 py-2 text-sm text-charcoal">
-          {syncMsg}
+          {actionError}
         </p>
       ) : null}
 
@@ -440,30 +347,6 @@ export function ProductsPanel() {
                             tone: "teal",
                             onSelect: () => void openDetail(p),
                           },
-                          {
-                            id: "wc",
-                            label:
-                              syncBusy === `woocommerce:${p.id}`
-                                ? "Sincronizando WC…"
-                                : "Empujar a WooCommerce",
-                            tone: "teal",
-                            disabled: Boolean(syncBusy),
-                            busy: syncBusy === `woocommerce:${p.id}`,
-                            onSelect: () =>
-                              void syncChannel(p.id, "woocommerce"),
-                          },
-                          {
-                            id: "ml",
-                            label:
-                              syncBusy === `mercadolibre:${p.id}`
-                                ? "Sincronizando ML…"
-                                : "Empujar a Mercado Libre",
-                            tone: "amber",
-                            disabled: Boolean(syncBusy),
-                            busy: syncBusy === `mercadolibre:${p.id}`,
-                            onSelect: () =>
-                              void syncChannel(p.id, "mercadolibre"),
-                          },
                         ]}
                       />
                       <Button
@@ -480,7 +363,7 @@ export function ProductsPanel() {
                             setEditing(full);
                             setCreating(false);
                             setDetail(null);
-                          } catch (err) { setSyncMsg(err instanceof Error ? err.message : "No se pudo cargar el producto."); }
+                          } catch (err) { setActionError(err instanceof Error ? err.message : "No se pudo cargar el producto."); }
                         }}
                       >
                         <Pencil className="size-4" />
@@ -510,13 +393,11 @@ export function ProductsPanel() {
 
 function ProductEditor({
   initial,
-  prefill,
   onCancel,
   onSaved,
   onCategoryCreated,
 }: {
   initial?: Product;
-  prefill?: ProductEditorPrefill;
   onCancel: () => void;
   onSaved: () => void;
   onCategoryCreated?: () => void;
@@ -530,15 +411,15 @@ function ProductEditor({
     () => listCategories(true),
     []
   );
-  const [sku, setSku] = useState(initial?.sku ?? prefill?.sku ?? "");
-  const [nombre, setNombre] = useState(initial?.nombre ?? prefill?.nombre ?? "");
+  const [sku, setSku] = useState(initial?.sku ?? "");
+  const [nombre, setNombre] = useState(initial?.nombre ?? "");
   const [categoria, setCategoria] = useState<ProductCategory>(
-    initial?.categoria ?? prefill?.categoria ?? "otros"
+    initial?.categoria ?? "otros"
   );
   const [newCat, setNewCat] = useState("");
   const [creatingCat, setCreatingCat] = useState(false);
   const suggestedCategory =
-    prefill?.categoriaNombre?.trim() || initial?.categoriaNombre?.trim() || "";
+    initial?.categoriaNombre?.trim() || "";
   const [precios, setPrecios] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     for (const pl of lists ?? []) {
@@ -563,15 +444,6 @@ function ProductEditor({
     });
   }, [initial, lists]);
   useEffect(() => {
-    if (!prefill?.precio || !lists?.length) return;
-    const defaultList = lists.find((l) => l.esDefault) ?? lists[0];
-    if (!defaultList) return;
-    setPrecios((current) => ({
-      ...current,
-      [defaultList.id]: String(prefill.precio),
-    }));
-  }, [prefill, lists]);
-  useEffect(() => {
     if (!categories?.length) return;
     setCategoria((current) => {
       if (categories.some((c) => c.codigo === current)) return current;
@@ -581,47 +453,32 @@ function ProductEditor({
           c.nombre.toLowerCase() === current.toLowerCase()
       );
       if (byName) return byName.codigo;
-      if (initial?.categoria === current || prefill?.categoria === current) {
+      if (initial?.categoria === current) {
         return current;
       }
       return categories[0]?.codigo ?? current;
     });
     const known = categories.some(
       (c) =>
-        c.codigo === (prefill?.categoria || initial?.categoria || "") ||
+        c.codigo === (initial?.categoria || "") ||
         (suggestedCategory &&
           c.nombre.toLowerCase() === suggestedCategory.toLowerCase())
     );
     if (!known && suggestedCategory) {
       setNewCat((current) => current || suggestedCategory);
     }
-  }, [categories, initial, prefill, suggestedCategory]);
+  }, [categories, initial, suggestedCategory]);
   const [costo, setCosto] = useState(String(initial?.costo ?? 0));
   const [stock, setStock] = useState(String(initial?.stock ?? 0));
   const [descripcion, setDescripcion] = useState(
-    initial?.descripcion ?? prefill?.descripcion ?? ""
+    initial?.descripcion ?? ""
   );
   const [activo, setActivo] = useState(initial?.activo ?? true);
-  const [wooId, setWooId] = useState(
-    initial?.channelLinks?.find((l) => l.channel === "woocommerce")
-      ?.externalId ?? ""
-  );
-  const [meliId, setMeliId] = useState(
-    initial?.channelLinks?.find((l) => l.channel === "mercadolibre")
-      ?.externalId ?? ""
-  );
   const [pendingImages, setPendingImages] = useState<PendingFile[]>(
-    prefill?.pendingImages ?? []
+    []
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [pendingSyncId, setPendingSyncId] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-
-  const hadWooLink = Boolean(
-    initial?.channelLinks?.find((l) => l.channel === "woocommerce")
-      ?.externalId
-  );
 
   async function addCategory(nameOverride?: string) {
     const name = (nameOverride ?? newCat).trim();
@@ -669,18 +526,6 @@ function ProductEditor({
         descripcion,
         activo,
       });
-      if (wooId.trim()) {
-        await upsertProductChannelLink(saved.id, "woocommerce", {
-          externalId: wooId.trim(),
-          externalSku: sku,
-        });
-      }
-      if (meliId.trim()) {
-        await upsertProductChannelLink(saved.id, "mercadolibre", {
-          externalId: meliId.trim(),
-          externalSku: sku,
-        });
-      }
       for (const pending of pendingImages) {
         await uploadProductImage(saved.id, {
           filename: pending.filename,
@@ -691,43 +536,12 @@ function ProductEditor({
           title: pending.filename,
         });
       }
-      const canOfferWooSync =
-        Boolean(initial) && (Boolean(wooId.trim()) || hadWooLink);
-      if (canOfferWooSync) {
-        setPendingSyncId(saved.id);
-      } else {
-        onSaved();
-      }
+      onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar.");
     } finally {
       setSaving(false);
     }
-  }
-
-  async function confirmSyncToWeb() {
-    if (!pendingSyncId) return;
-    setSyncing(true);
-    setError(null);
-    try {
-      await pushWooProduct(pendingSyncId, "both");
-      setPendingSyncId(null);
-      onSaved();
-    } catch (e) {
-      setPendingSyncId(null);
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Guardado en Aurix, pero falló el sync con el sitio web."
-      );
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  function skipSyncToWeb() {
-    setPendingSyncId(null);
-    onSaved();
   }
 
   return (
@@ -871,24 +685,7 @@ function ProductEditor({
           pending={pendingImages}
           onPendingChange={setPendingImages}
         />
-        <div className="space-y-1.5">
-          <Label htmlFor="woo-id">ID WooCommerce</Label>
-          <Input
-            id="woo-id"
-            value={wooId}
-            onChange={(e) => setWooId(e.target.value)}
-            placeholder="vacío = crear al empujar"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="meli-id">Ítem Mercado Libre</Label>
-          <Input
-            id="meli-id"
-            value={meliId}
-            onChange={(e) => setMeliId(e.target.value)}
-            placeholder="MLA…"
-          />
-        </div>
+
       </div>
       {error ? (
         <p className="text-sm text-destructive">{error}</p>
@@ -897,13 +694,13 @@ function ProductEditor({
         <p className="text-sm text-destructive">{loadError}</p>
       ) : null}
       <div className="flex gap-2">
-        <Button type="submit" disabled={loading || saving || syncing}>
+        <Button type="submit" disabled={loading || saving}>
           {saving ? "Guardando…" : "Guardar"}
         </Button>
         <Button
           type="button"
           variant="outline"
-          disabled={saving || syncing}
+          disabled={saving}
           onClick={onCancel}
         >
           Cancelar
@@ -911,17 +708,6 @@ function ProductEditor({
       </div>
     </form>
 
-    {pendingSyncId ? (
-      <ConfirmModal
-        title="¿Actualizar también el sitio web?"
-        description="El producto ya quedó guardado en Aurix. ¿Querés empujar stock y precio a WooCommerce para actualizarlo en el sitio?"
-        confirmLabel="Sí, sincronizar"
-        cancelLabel="No, solo Aurix"
-        busy={syncing}
-        onConfirm={() => void confirmSyncToWeb()}
-        onCancel={skipSyncToWeb}
-      />
-    ) : null}
     </>
   );
 }

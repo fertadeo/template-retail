@@ -4,9 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useBranchScope } from "@/lib/branch-scope-context";
 import { useComercio } from "@/lib/comercio-context";
-import { BRANCHES_ENABLED } from "@/lib/features";
 import { salesByVendor } from "@/lib/store";
 import { useRetailQuery } from "@/lib/use-retail-query";
 import { formatMxn } from "@/lib/utils";
@@ -17,12 +15,7 @@ export function SalesReportPanel() {
   const [to, setTo] = useState("");
   const [canal, setCanal] = useState<"" | "pos" | "pedido" | "mayorista">("pos");
   const { comercio } = useComercio();
-  const { branchScope, branches } = useBranchScope();
-  const scopeLabel = BRANCHES_ENABLED
-    ? branchScope === "all"
-      ? "Todas las sucursales"
-      : branches.find((b) => b.id === branchScope)?.nombre ?? "Sucursal"
-    : comercio?.nombre ?? "Comercio activo";
+  const scopeLabel = comercio?.nombre ?? "Venta local";
 
   useEffect(() => {
     const d = new Date();
@@ -58,9 +51,7 @@ export function SalesReportPanel() {
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Alcance actual: <span className="font-medium text-foreground">{scopeLabel}</span>.
-          {BRANCHES_ENABLED
-            ? "Cambiá sucursal arriba para ver un local o todos."
-            : "El alcance es el comercio activo del encabezado."}
+          Ventas de este local.
         </p>
       </div>
 
@@ -84,7 +75,7 @@ export function SalesReportPanel() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="rep-canal">Canal</Label>
+          <Label htmlFor="rep-canal">Modalidad</Label>
           <select
             id="rep-canal"
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -132,9 +123,7 @@ export function SalesReportPanel() {
           <thead className="border-b border-border/60 text-xs uppercase tracking-[0.1em] text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Vendedor</th>
-              {BRANCHES_ENABLED ? (
-                <th className="px-4 py-3 font-medium">Sucursal</th>
-              ) : null}
+
               <th className="px-4 py-3 font-medium">Tickets</th>
               <th className="px-4 py-3 font-medium text-right">Total</th>
             </tr>
@@ -143,7 +132,7 @@ export function SalesReportPanel() {
             {loading ? (
               <tr>
                 <td
-                  colSpan={BRANCHES_ENABLED ? 4 : 3}
+                  colSpan={3}
                   className="px-4 py-6 text-muted-foreground"
                 >
                   Cargando…
@@ -156,11 +145,7 @@ export function SalesReportPanel() {
                 className="border-b border-border/40 last:border-0"
               >
                 <td className="px-4 py-3 font-medium">{r.vendedorNombre}</td>
-                {BRANCHES_ENABLED ? (
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {r.branchNombre ?? "—"}
-                  </td>
-                ) : null}
+
                 <td className="px-4 py-3 tabular-nums">{r.tickets}</td>
                 <td className="px-4 py-3 text-right tabular-nums font-medium">
                   {formatMxn(r.total)}
@@ -170,7 +155,7 @@ export function SalesReportPanel() {
             {!loading && rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={BRANCHES_ENABLED ? 4 : 3}
+                  colSpan={3}
                   className="px-4 py-6 text-muted-foreground"
                 >
                   Sin ventas en el período / alcance elegido.

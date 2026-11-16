@@ -94,7 +94,7 @@ export function MediaLibrary() {
             Biblioteca de medios
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Imágenes de productos y archivos adjuntos del comercio activo.
+            Imágenes de productos y archivos adjuntos del local.
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -1,5 +1,4 @@
 import { apiUrl } from "@/lib/api-config";
-import { BRANCHES_ENABLED } from "@/lib/features";
 import type {
   AppFunctionMeta,
   Branch,
@@ -74,24 +73,6 @@ export class ApiError extends Error {
   }
 }
 
-function activeComercioHeader(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const id = localStorage.getItem("retail360.comercioId");
-  return id ? { "X-Comercio-Id": id } : {};
-}
-
-function activeScopeHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const out: Record<string, string> = {};
-  if (BRANCHES_ENABLED) {
-    const branch = localStorage.getItem("retail360.branchScope");
-    if (branch) out["X-Branch-Id"] = branch;
-  }
-  const vendedor = localStorage.getItem("retail360.vendedorId");
-  if (vendedor) out["X-Vendedor-Id"] = vendedor;
-  return out;
-}
-
 async function request<T>(
   path: string,
   init?: RequestInit
@@ -101,8 +82,6 @@ async function request<T>(
     headers: {
       Accept: "application/json",
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...activeComercioHeader(),
-      ...activeScopeHeaders(),
       ...init?.headers,
     },
     cache: "no-store",
@@ -160,6 +139,7 @@ function friendlyHttpError(status: number, body: string): string {
 }
 
 export const api = {
+  getLocalBusiness: () => request<Comercio>("/business"),
   getSession: () => request<{
     user: { id: string; nombre: string; email: string; role: import("@/lib/types").UserRole };
   }>("/auth/session"),
