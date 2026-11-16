@@ -53,3 +53,29 @@ UX viva: `docs/UX_UI.md`. Push de agentes: a **`main`**.
 
 Marcado como **Template repository** para el alta (`repoTemplateFront`).
 Sincronizado desde mejoras validadas en instancias (p. ej. Musicanoba).
+
+
+## Cuenta y carga de catálogo
+
+Con `NEXT_PUBLIC_API_URL`, el sistema requiere login con una cuenta activa de la API.
+El sidebar muestra nombre, rol, Mi cuenta (email) y Cerrar sesión. La sesión usa
+cookie HttpOnly `aurix_session`, vence a las 8 horas y se pierde al reiniciar la API.
+La tienda `/tienda` continúa pública. El login usa marca genérica Aurix Retail.
+
+Sin API configurada se conserva el modo demo local: no solicita credenciales reales,
+el sidebar indica Demo local y los productos/medios se paginan en memoria.
+La demo no implementa una sesión autenticada y no muestra Cerrar sesión.
+
+`/productos` y `/pos` solicitan páginas de 40 productos; POS prioriza SKU exacto.
+La biblioteca solicita 24 medios por página, sin base64 en los listados remotos,
+con miniaturas locales y descarga del original al abrirlo. Los medios remotos
+conservan su URL. Muestra cantidad y peso registrado de toda la búsqueda, junto
+al número de archivos sin tamaño registrado. Los contadores de salud se cargan
+por separado y no bloquean la grilla ni se recalculan al cambiar de página.
+
+Actualizar API y frontend de manera coordinada: se incorpora el rewrite autenticado
+`/api/media/:path*`. La API requiere `npm ci` para instalar Sharp y Node >=20.9.
+No hay migraciones nuevas. Ver README de template-retail-api para métricas
+Server-Timing y logs de lecturas lentas. Estas mejoras aplican a nuevas instancias
+provisionadas desde los templates; las instancias existentes requieren actualizar
+su código y desplegarlo.

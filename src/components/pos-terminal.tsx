@@ -18,7 +18,6 @@ import {
   addPosSale,
   getPriceList,
   listClients,
-  listProducts,
   resolveClientPriceListId,
 } from "@/lib/store";
 import { printThermalTicket } from "@/lib/thermal-ticket";
@@ -29,11 +28,14 @@ import {
   type Order,
   type OrderLine,
   type PaymentMethod,
+  type Product,
 } from "@/lib/types";
 import { useBranchScope } from "@/lib/branch-scope-context";
 import { useComercio } from "@/lib/comercio-context";
 import { BRANCHES_ENABLED } from "@/lib/features";
 import { cn, formatMxn } from "@/lib/utils";
+import { useProductPage } from "@/lib/use-product-page";
+import { ProductPagination } from "@/components/product-pagination";
 import { useRetailQuery } from "@/lib/use-retail-query";
 
 const fieldClass =
@@ -50,17 +52,15 @@ export function PosTerminal() {
   const { comercio } = useComercio();
   const { branchId, vendedorId, branchScope, branches, vendedor } =
     useBranchScope();
-  const {
-    data,
-    loading,
-    error: loadError,
-  } = useRetailQuery(
-    () => Promise.all([listProducts(), listClients()]),
-    []
-  );
-  const products = (data?.[0] ?? []).filter((p) => p.activo && p.stock > 0);
-  const clients = data?.[1] ?? [];
+  const { data: clientData, error: clientsError } = useRetailQuery(() => listClients(), []);
+  const clients = clientData ?? [];
   const [q, setQ] = useState("");
+  const { data: productPage, loading, error: loadError, page, setPage, reload: reloadProducts } = useProductPage({
+    q: q.trim(), pos: true, pageSize: 40,
+  });
+  const products = productPage?.items ?? [];
+  // Keep only selected products so changing search/page preserves ticket repricing.
+  const [cartProducts, setCartProducts] = useState<Record<string, Product>>({});
   const [cart, setCart] = useState<OrderLine[]>([]);
   const [clientId, setClientId] = useState("");
   const [conEnvio, setConEnvio] = useState(false);
@@ -86,13 +86,7 @@ export function PosTerminal() {
   const listLabel = priceData?.listLabel ?? "Default";
   const selectedClient = clients.find((c) => c.id === clientId) ?? null;
 
-  const filtered = products.filter((p) => {
-    if (!q.trim()) return true;
-    const n = q.trim().toLowerCase();
-    return (
-      p.nombre.toLowerCase().includes(n) || p.sku.toLowerCase().includes(n)
-    );
-  });
+  const filtered = products;
 
   const subtotal = cart.reduce(
     (a, l) => a + l.cantidad * l.precioUnitario,
@@ -117,7 +111,7 @@ export function PosTerminal() {
     const listId = await resolveClientPriceListId(nextClientId || null);
     setCart((prev) =>
       prev.map((l) => {
-        const p = products.find((x) => x.id === l.productId);
+        const p = cartProducts[l.productId];
         if (!p) return l;
         return { ...l, precioUnitario: productPrice(p, listId) };
       })
@@ -128,6 +122,7 @@ export function PosTerminal() {
     if (phase === "done") startNewSale();
     const p = products.find((x) => x.id === productId);
     if (!p) return;
+    setCartProducts(prev => ({ ...prev, [p.id]: p }));
     const unit = productPrice(p, priceListId);
     setCart((prev) => {
       const existing = prev.find((l) => l.productId === p.id);
@@ -165,6 +160,7 @@ export function PosTerminal() {
   function startNewSale() {
     setPhase("editing");
     setCart([]);
+    setCartProducts({});
     setMessage(null);
     setError(null);
     setLastSale(null);
@@ -191,6 +187,8 @@ export function PosTerminal() {
       });
       setLastSale(sale);
       setCart([]);
+      setCartProducts({});
+      reloadProducts();
       setPhase("done");
       setMessage(
         `Venta ${sale.folio} · ${listLabel} · ${formatMxn(orderTotal(sale))}`
@@ -268,9 +266,9 @@ export function PosTerminal() {
         </p>
       </div>
       {loading ? (
-        <p className="text-sm text-muted-foreground">Cargando productos y clientes…</p>
-      ) : loadError || priceError ? (
-        <p className="text-sm text-destructive">{loadError ?? priceError}</p>
+        <p className="text-sm text-muted-foreground">Cargando productos…</p>
+      ) : loadError || clientsError || priceError ? (
+        <p className="text-sm text-destructive">{loadError ?? clientsError ?? priceError}</p>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1.35fr_minmax(20rem,22rem)]">
@@ -278,9 +276,13 @@ export function PosTerminal() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar producto o SKU…"
+            placeholder="Buscar por código / SKU o nombre…"
             autoFocus
           />
+          <ProductPagination page={page} hasMore={productPage?.hasMore ?? false} loading={loading} onPage={setPage} />
+          {!loading && !loadError && !filtered.length ? (
+            <p className="text-sm text-muted-foreground">No se encontraron productos disponibles.</p>
+          ) : null}
           <div className="grid max-h-[min(36rem,70vh)] gap-2 overflow-y-auto sm:grid-cols-2">
             {filtered.map((p) => (
               <button

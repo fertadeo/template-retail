@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
+import { ModalPortal } from "@/components/modal-portal";
 import {
   ChevronLeft,
   ChevronRight,
@@ -20,84 +20,32 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api } from "@/lib/api-client";
-import { isApiMode } from "@/lib/api-config";
+import { ProductPagination } from "@/components/product-pagination";
+import { useMediaPage } from "@/lib/use-media-page";
+import { createLibraryMedia, deleteLibraryMedia } from "@/lib/catalog-data";
 import {
   fileToMediaPayload,
   formatBytes,
   type MediaKind,
-  type MediaLibraryCounts,
   type MediaLibraryItem,
 } from "@/lib/media-library";
 import { cn } from "@/lib/utils";
 
 type TabId = MediaKind;
 
-const memoryItems: MediaLibraryItem[] = [];
-
-function countsOf(items: MediaLibraryItem[]): MediaLibraryCounts {
-  return {
-    images: items.filter((i) => i.kind === "image").length,
-    attachments: items.filter((i) => i.kind === "attachment").length,
-    total: items.length,
-  };
-}
-
 export function MediaLibrary() {
   const [tab, setTab] = useState<TabId>("image");
-  const [items, setItems] = useState<MediaLibraryItem[]>([]);
-  const [counts, setCounts] = useState<MediaLibraryCounts>({
-    images: 0,
-    attachments: 0,
-    total: 0,
-  });
   const [query, setQuery] = useState("");
-  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function refresh() {
-    setError(null);
-    try {
-      if (!isApiMode()) {
-        setItems([...memoryItems]);
-        setCounts(countsOf(memoryItems));
-        return;
-      }
-      const data = await api.listMedia();
-      setItems(data.items);
-      setCounts(data.counts);
-    } catch (err) {
-      setItems([]);
-      setCounts({ images: 0, attachments: 0, total: 0 });
-      setError(err instanceof Error ? err.message : "Error al cargar.");
-    } finally {
-      setReady(true);
-    }
-  }
+  const { data, error: loadError, loading, page, setPage, reload } = useMediaPage(tab, query.trim());
+  const counts = data?.counts;
+  const filtered = data?.items ?? [];
 
-  useEffect(() => {
-    void refresh();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return items.filter((item) => {
-      if (item.kind !== tab) return false;
-      if (!q) return true;
-      return [item.filename, item.title, item.subtitle, item.sourceLabel]
-        .join(" ")
-        .toLowerCase()
-        .includes(q);
-    });
-  }, [items, tab, query]);
-
-  const previewIndex = useMemo(
-    () => (previewId ? filtered.findIndex((i) => i.id === previewId) : -1),
-    [filtered, previewId]
-  );
+  const previewIndex = previewId ? filtered.findIndex(i => i.id === previewId) : -1;
   const preview = previewIndex >= 0 ? filtered[previewIndex] : null;
 
   async function handleUpload(file: File) {
@@ -108,35 +56,13 @@ export function MediaLibrary() {
       const kind: MediaKind = payload.mime.startsWith("image/")
         ? "image"
         : "attachment";
-      if (!isApiMode()) {
-        const item: MediaLibraryItem = {
-          id: `local_${Date.now()}`,
-          kind,
-          source: "library",
-          sourceLabel:
-            kind === "image" ? "Imagen de biblioteca" : "Archivo de biblioteca",
-          filename: payload.filename,
-          mime: payload.mime,
-          sizeBytes: payload.sizeBytes,
-          dataUrl: payload.dataUrl,
-          uploadedAt: new Date().toISOString().slice(0, 10),
-          title: payload.filename,
-          subtitle: "",
-          entityHref: "/biblioteca",
-          productId: null,
-        };
-        memoryItems.unshift(item);
-        setTab(kind);
-        await refresh();
-        return;
-      }
-      await api.createMedia({
+      await createLibraryMedia({
         ...payload,
         kind,
         title: payload.filename,
       });
       setTab(kind);
-      await refresh();
+      reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo subir.");
     } finally {
@@ -146,22 +72,18 @@ export function MediaLibrary() {
 
   async function handleDelete(id: string) {
     try {
-      if (!isApiMode()) {
-        const idx = memoryItems.findIndex((i) => i.id === id);
-        if (idx >= 0) memoryItems.splice(idx, 1);
-      } else {
-        await api.deleteMedia(id);
-      }
+      await deleteLibraryMedia(id);
       if (previewId === id) setPreviewId(null);
-      await refresh();
+      if (filtered.length === 1 && page > 1) setPage(page - 1);
+      else reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo eliminar.");
     }
   }
 
-  const tabs: Array<{ id: TabId; label: string; count: number }> = [
-    { id: "image", label: "Imágenes", count: counts.images },
-    { id: "attachment", label: "Archivos adjuntos", count: counts.attachments },
+  const tabs: Array<{ id: TabId; label: string; count: number | string }> = [
+    { id: "image", label: "Imágenes", count: counts?.images ?? "…" },
+    { id: "attachment", label: "Archivos adjuntos", count: counts?.attachments ?? "…" },
   ];
 
   return (
@@ -176,9 +98,19 @@ export function MediaLibrary() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Images className="size-4 text-teal" />
-            <span className="tabular-nums">{counts.total} en total</span>
+          <div className="text-sm text-muted-foreground" aria-live="polite">
+            <div className="flex flex-wrap items-center gap-2">
+              <Images className="size-4 text-teal" />
+              <span className="tabular-nums">{counts?.total ?? "…"} en total</span>
+              <span aria-hidden="true">·</span>
+              <span className="tabular-nums">
+                {counts?.totalSizeBytes !== undefined ? formatBytes(counts.totalSizeBytes) : "…"}
+                {" "}{counts?.unknownSizeCount ? "registrados" : "en archivos"}
+              </span>
+            </div>
+            {counts && counts.unknownSizeCount > 0 ? (
+              <p className="mt-1 text-xs">{counts.unknownSizeCount} {counts.unknownSizeCount === 1 ? "archivo sin peso registrado" : "archivos sin peso registrado"}</p>
+            ) : null}
           </div>
           <input
             ref={fileRef}
@@ -250,15 +182,16 @@ export function MediaLibrary() {
         </div>
       </div>
 
-      {error ? (
+      {error || loadError ? (
         <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
+          {error ?? loadError}
         </p>
       ) : null}
 
-      {!ready ? (
+      <ProductPagination label="Páginas de medios" page={page} hasMore={data?.hasMore ?? false} loading={loading} onPage={setPage} />
+      {loading ? (
         <p className="text-sm text-muted-foreground">Cargando biblioteca…</p>
-      ) : filtered.length === 0 ? (
+      ) : loadError ? null : filtered.length === 0 ? (
         <EmptyState tab={tab} hasQuery={Boolean(query.trim())} />
       ) : tab === "image" ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -286,6 +219,7 @@ export function MediaLibrary() {
 
       {preview ? (
         <MediaLightbox
+          key={preview.id}
           item={preview}
           index={previewIndex}
           total={filtered.length}
@@ -347,7 +281,9 @@ function ImageCard({
         {item.dataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={item.dataUrl}
+            src={item.thumbnailUrl || item.dataUrl}
+            loading="lazy"
+            decoding="async"
             alt={item.filename}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
@@ -471,19 +407,10 @@ function MediaLightbox({
   onNext: () => void;
 }) {
   const [zoom, setZoom] = useState(1);
-  const [mounted, setMounted] = useState(false);
   const isImage = item.kind === "image" && Boolean(item.dataUrl);
   const isPdf = item.mime === "application/pdf" && Boolean(item.dataUrl);
   const canPrev = index > 0;
   const canNext = index >= 0 && index < total - 1;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    setZoom(1);
-  }, [item.id]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -503,9 +430,8 @@ function MediaLightbox({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, onPrev, onNext]);
 
-  if (!mounted) return null;
-
-  return createPortal(
+  return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-[200] flex h-dvh w-screen flex-col bg-[#0c0a09]/92 backdrop-blur-md"
       role="dialog"
@@ -706,8 +632,8 @@ function MediaLightbox({
           Esc cierra · ← → navega{isImage ? " · +/− zoom" : ""}
         </p>
       </footer>
-    </div>,
-    document.body
+    </div>
+    </ModalPortal>
   );
 }
 

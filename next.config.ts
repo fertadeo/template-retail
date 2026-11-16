@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     if (!apiUpstream) return [];
     return [
+      { source: "/api/media/:path*", destination: `${apiUpstream}/api/media/:path*` },
       {
         source: "/aurix-api/:path*",
         destination: `${apiUpstream}/:path*`,

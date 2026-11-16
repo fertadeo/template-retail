@@ -1,47 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useBranchId } from "@/lib/branch-scope-context";
-import { useComercioId } from "@/lib/comercio-context";
+import { useBranchScope } from "@/lib/branch-scope-context";
+import { useCatalogQuery } from "@/lib/use-catalog-query";
 
-export function useRetailQuery<T>(
-  loader: () => Promise<T>,
-  deps: unknown[] = []
-) {
-  const comercioId = useComercioId();
-  const branchId = useBranchId();
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tick, setTick] = useState(0);
-
-  const reload = useCallback(() => setTick((t) => t + 1), []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    loader()
-      .then((value) => {
-        if (!cancelled) {
-          setData(value);
-          setError(null);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "No se pudo cargar."
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, comercioId, branchId, ...deps]);
-
-  return { data, error, loading, reload, setData };
+export function useRetailQuery<T>(loader: () => Promise<T>, deps: unknown[] = []) {
+  const { branchId, vendedorId, loading: scopeLoading } = useBranchScope();
+  const query = useCatalogQuery(["retail", branchId, vendedorId, ...deps],
+    () => loader(), 0, !scopeLoading);
+  return { data: query.data ?? null, error: query.error ?? null,
+    loading: query.loading, reload: query.reload };
 }

@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useProductPage } from "@/lib/use-product-page";
+import { ProductPagination } from "@/components/product-pagination";
+import { productHealthCounts } from "@/lib/catalog-data";
+import { useCatalogQuery } from "@/lib/use-catalog-query";
 import { Pencil } from "lucide-react";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { ProductImportFromUrlModal } from "@/components/product-import-from-url-modal";
@@ -29,7 +33,6 @@ import {
   getProduct,
   listCategories,
   listPriceLists,
-  listProducts,
   pushMeliProduct,
   pushWooProduct,
   uploadProductImage,
@@ -82,16 +85,6 @@ type SortKey =
   | "sold_asc";
 
 export function ProductsPanel() {
-  const {
-    data: products,
-    loading,
-    error,
-    reload,
-  } = useRetailQuery(() => listProducts(), []);
-  const { data: lists, error: listsError } = useRetailQuery(
-    () => listPriceLists(true),
-    []
-  );
   const { data: categories, reload: reloadCategories } = useRetailQuery(
     () => listCategories(true),
     []
@@ -110,6 +103,15 @@ export function ProductsPanel() {
   const [importOpen, setImportOpen] = useState(false);
   const [createPrefill, setCreatePrefill] =
     useState<ProductEditorPrefill | null>(null);
+
+  const { data: productPage, loading, error, reload, version, page, setPage } = useProductPage({
+    q: query.trim(), category, health: healthFilter, sort, pageSize: 40,
+  });
+  const { data: healthCounts, error: countsError } = useCatalogQuery(
+    ["product-counts", query.trim(), category, version],
+    signal => productHealthCounts(query.trim(), category, signal), query.trim() ? 250 : 0
+  );
+  const filtered = productPage?.items ?? [];
 
   function applyImportDraft(draft: ImportedProductDraft) {
     const pending: PendingFile[] = draft.images
@@ -138,48 +140,6 @@ export function ProductsPanel() {
     setEditing(null);
     setDetail(null);
   }
-
-  const healthCounts = useMemo(() => {
-    const counts = { ready: 0, attention: 0, critical: 0, all: 0 };
-    for (const p of products ?? []) {
-      counts.all += 1;
-      counts[productHealth(p).level] += 1;
-    }
-    return counts;
-  }, [products]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let rows = [...(products ?? [])];
-    if (q) {
-      rows = rows.filter(
-        (p) =>
-          p.nombre.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q)
-      );
-    }
-    if (category) {
-      rows = rows.filter((p) => p.categoria === category);
-    }
-    if (healthFilter !== "all") {
-      rows = rows.filter((p) => productHealth(p).level === healthFilter);
-    }
-    rows.sort((a, b) => {
-      switch (sort) {
-        case "recent":
-          return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
-        case "oldest":
-          return (a.createdAt ?? "").localeCompare(b.createdAt ?? "");
-        case "sold_desc":
-          return (b.unitsSold ?? 0) - (a.unitsSold ?? 0);
-        case "sold_asc":
-          return (a.unitsSold ?? 0) - (b.unitsSold ?? 0);
-        default:
-          return a.nombre.localeCompare(b.nombre, "es");
-      }
-    });
-    return rows;
-  }, [products, query, category, healthFilter, sort]);
 
   async function openDetail(p: Product) {
     setDetail(p);
@@ -266,7 +226,7 @@ export function ProductsPanel() {
           {HEALTH_FILTERS.map((t) => {
             const active = healthFilter === t.id;
             const count =
-              t.id === "all" ? healthCounts.all : healthCounts[t.id];
+              healthCounts?.[t.id];
             return (
               <button
                 key={t.id}
@@ -297,7 +257,7 @@ export function ProductsPanel() {
                     active ? "text-teal" : "text-muted-foreground"
                   )}
                 >
-                  ({count})
+                  ({count ?? "…"})
                 </span>
               </button>
             );
@@ -381,18 +341,20 @@ export function ProductsPanel() {
         />
       ) : null}
 
+      {countsError ? <p role="status" className="text-sm text-muted-foreground">No se pudieron cargar los contadores de estado.</p> : null}
       {syncMsg ? (
         <p className="rounded-lg bg-tealSoft/60 px-3 py-2 text-sm text-charcoal">
           {syncMsg}
         </p>
       ) : null}
 
+      <ProductPagination page={page} hasMore={productPage?.hasMore ?? false} loading={loading} onPage={setPage} />
       <div className="overflow-hidden rounded-xl bg-card/90 ring-1 ring-border/70">
         {loading ? (
           <p className="px-4 py-6 text-sm text-muted-foreground">Cargando productos…</p>
-        ) : error || listsError ? (
+        ) : error ? (
           <p className="px-4 py-6 text-sm text-destructive">
-            {error ?? listsError}
+            {error}
           </p>
         ) : null}
         <table className="w-full text-left text-sm">
@@ -429,6 +391,8 @@ export function ProductsPanel() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={productImageSrc(p.imagenPrincipal)!}
+                          loading="lazy"
+                          decoding="async"
                           alt=""
                           className="size-full object-cover"
                         />
@@ -509,10 +473,14 @@ export function ProductsPanel() {
                         className="size-8 text-muted-foreground hover:text-foreground"
                         aria-label={`Editar ${p.nombre}`}
                         title="Editar"
-                        onClick={() => {
-                          setEditing(p);
-                          setCreating(false);
-                          setDetail(null);
+                        onClick={async () => {
+                          try {
+                            const full = await getProduct(p.id);
+                            if (!full) throw new Error("Producto no encontrado.");
+                            setEditing(full);
+                            setCreating(false);
+                            setDetail(null);
+                          } catch (err) { setSyncMsg(err instanceof Error ? err.message : "No se pudo cargar el producto."); }
                         }}
                       >
                         <Pencil className="size-4" />

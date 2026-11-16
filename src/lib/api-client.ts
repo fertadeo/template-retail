@@ -30,6 +30,18 @@ import type {
   VendorSalesRow,
 } from "@/lib/types";
 
+export type ProductPageOptions = {
+  page: number; pageSize?: number; q?: string; category?: string;
+  health?: "all" | "ready" | "attention" | "critical";
+  sort?: "nombre" | "recent" | "oldest" | "sold_desc" | "sold_asc";
+  pos?: boolean;
+};
+export type ProductHealthCounts = { all: number; ready: number; attention: number; critical: number };
+export type ProductPage = {
+  items: Product[]; page: number; pageSize: number; hasMore: boolean;
+  counts?: ProductHealthCounts;
+};
+
 export type QuotePayload = {
   clientId?: string | null;
   clienteNombre?: string;
@@ -104,6 +116,11 @@ async function request<T>(
       data = { error: friendlyHttpError(res.status, text) };
     }
   }
+  if (res.status === 401 && typeof window !== "undefined") {
+    // Discard cached private UI after the server rejects the session.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+  }
   if (!res.ok) {
     const raw =
       data &&
@@ -143,6 +160,9 @@ function friendlyHttpError(status: number, body: string): string {
 }
 
 export const api = {
+  getSession: () => request<{
+    user: { id: string; nombre: string; email: string; role: import("@/lib/types").UserRole };
+  }>("/auth/session"),
   health: () =>
     request<{ ok: boolean; db: boolean }>("/health"),
 
@@ -224,6 +244,15 @@ export const api = {
     }),
 
   listProducts: () => request<Product[]>("/products"),
+  productHealthCounts: (q: string, category: string, signal?: AbortSignal) =>
+    request<ProductHealthCounts>(`/products/counts?${new URLSearchParams({ q, category })}`, { signal }),
+  listProductsPage: (options: ProductPageOptions, signal?: AbortSignal) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(options)) {
+      if (value !== undefined) params.set(key, String(value));
+    }
+    return request<ProductPage>(`/products?${params}`, { signal });
+  },
 
   importProductFromUrl: (url: string) =>
     request<{
@@ -759,11 +788,15 @@ export const api = {
     request<void>(`/quotes/${id}`, { method: "DELETE" }),
 
   listMedia: (params?: {
+    page?: number;
+    pageSize?: number;
     kind?: "image" | "attachment" | "all";
     q?: string;
     productId?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const sp = new URLSearchParams();
+    sp.set("page", String(params?.page ?? 1));
+    sp.set("pageSize", String(params?.pageSize ?? 24));
     if (params?.kind && params.kind !== "all") sp.set("kind", params.kind);
     if (params?.q) sp.set("q", params.q);
     if (params?.productId) sp.set("productId", params.productId);
@@ -771,7 +804,8 @@ export const api = {
     return request<{
       items: import("@/lib/media-library").MediaLibraryItem[];
       counts: import("@/lib/media-library").MediaLibraryCounts;
-    }>(`/media${qs ? `?${qs}` : ""}`);
+      page: number; pageSize: number; hasMore: boolean;
+    }>(`/media${qs ? `?${qs}` : ""}`, { signal });
   },
 
   createMedia: (body: {
