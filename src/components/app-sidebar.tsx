@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SidebarAccount } from "@/components/sidebar-account";
 import { usePathname } from "next/navigation";
 import {
   Building2,
@@ -70,7 +71,7 @@ export function AppSidebar({
             <p className="mt-0.5 text-xs text-sand/60">Retail · mostrador</p>
           </Link>
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+        <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
           {NAV.map((item) => {
             const active = item.exact
               ? pathname === item.href
@@ -94,9 +95,7 @@ export function AppSidebar({
             );
           })}
         </nav>
-        <div className="border-t border-white/10 px-4 py-4 text-xs text-sand/50">
-          Retail 360 · WooCommerce · ML
-        </div>
+        <SidebarAccount />
       </aside>
     </>
   );

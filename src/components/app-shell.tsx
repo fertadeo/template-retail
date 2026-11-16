@@ -120,7 +120,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (pathname?.startsWith("/tienda")) {
+  if (pathname === "/login" || pathname === "/tienda" || pathname?.startsWith("/tienda/")) {
     return <>{children}</>;
   }
   return (
