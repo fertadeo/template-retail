@@ -16,3 +16,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Si cero es válido, un campo vacío se interpreta como cero al guardar y no debe tener `required`. Si se exige un valor positivo, conservar `min` y la validación del formulario.
 - Los nombres/unidades de campos van en etiquetas visibles, no en el placeholder numérico.
 - Verificar solo lo necesario para el cambio. Evitar QA exhaustivo, pruebas repetidas o navegador salvo necesidad concreta o pedido del usuario.
+
+## Altas y edición
+
+- Toda alta o edición (listas, clientes, pedidos, ventas mayoristas, usuarios y demás entidades) debe abrir un modal adaptable; nunca insertar el formulario como un bloque dentro del listado.
+- Usar el componente compartido de modal cuando esté disponible, con foco contenido, encabezado y acciones fijas, scroll interior y confirmación ante Escape, clic fuera o Cancelar.
+- Mantener los errores dentro del modal y bloquear acciones duplicadas/cierre mientras se guarda. El cierre confirmado descarta el borrador; el guardado exitoso actualiza el listado.
