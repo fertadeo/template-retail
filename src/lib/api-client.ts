@@ -843,24 +843,21 @@ export const api = {
       "/catalog/settings"
     ).then((r) => r.settings),
 
-  putCatalogSettings: (body: {
-    whatsappPhone?: string;
-    orderTtlHours?: number | string;
-    publicEnabled?: boolean;
-  }) =>
-    request<{ settings: import("@/lib/catalog").CatalogSettings }>(
-      "/catalog/settings",
-      { method: "PUT", body: JSON.stringify(body) }
-    ).then((r) => r.settings),
+  putCatalogSettings: (body: import("@/lib/catalog").CatalogSettings) =>
+    request<{ settings: import("@/lib/catalog").CatalogSettings }>("/catalog/settings", {
+      method: "PUT", body: JSON.stringify(body),
+    }).then(result => result.settings),
 
-  listCatalogOrders: () =>
-    request<{ orders: import("@/lib/catalog").CatalogOrder[] }>(
-      "/catalog/orders"
-    ).then((r) => r.orders),
+  listCatalogOrders: (options: { page: number; status?: string; q?: string }, signal?: AbortSignal) => {
+    const params = new URLSearchParams({ page: String(options.page), pageSize: "20" });
+    if (options.status) params.set("status", options.status);
+    if (options.q) params.set("q", options.q);
+    return request<import("@/lib/catalog").CatalogOrderPage>(`/catalog/orders?${params}`, { signal });
+  },
 
   patchCatalogOrder: (
     id: string,
-    status: import("@/lib/catalog").CatalogOrderStatus
+    status: "pendiente" | "confirmado" | "cancelado"
   ) =>
     request<{ order: import("@/lib/catalog").CatalogOrder }>(
       `/catalog/orders/${id}`,

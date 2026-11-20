@@ -12,6 +12,7 @@ import {
   Package,
   Settings,
   ShoppingBag,
+  Store,
   Users,
   Warehouse,
 } from "lucide-react";
@@ -27,6 +28,7 @@ const NAV = [
   { href: "/mayorista", label: "Mayorista", icon: Building2 },
   { href: "/pos", label: "POS", icon: ShoppingBag },
   { href: "/reportes", label: "Reportes", icon: ChartColumn },
+  { href: "/catalogo", label: "Catálogo público", icon: Store },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 export function AppSidebar({

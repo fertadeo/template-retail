@@ -1,84 +1,151 @@
-export type CatalogOrderStatus =
-  | "pendiente"
-  | "confirmado"
-  | "cobrado"
-  | "cancelado"
-  | "vencido";
-
-export const CATALOG_ORDER_STATUS_LABELS: Record<CatalogOrderStatus, string> = {
-  pendiente: "Pendiente",
-  confirmado: "Confirmado",
-  cobrado: "Cobrado",
-  cancelado: "Cancelado",
-  vencido: "Vencido",
+export type CatalogSettings = {
+  publicEnabled: boolean;
+  whatsappPhone: string;
+  displayName: string;
+  welcomeText: string;
+  currency: "ARS" | "MXN" | "USD" | "UYU";
+  orderTtlHours: number;
 };
-
-export const CATALOG_ORDER_STATUSES: CatalogOrderStatus[] = [
-  "pendiente",
-  "confirmado",
-  "cobrado",
-  "cancelado",
-  "vencido",
-];
-
-export type CatalogPublicProduct = {
+export type CatalogProduct = {
   id: string;
   name: string;
   sku: string;
   category: string;
+  categoryName: string;
   description: string;
   unitPrice: number;
   currency: string;
-  imageDataUrl: string | null;
-  images: Array<{
-    filename: string;
-    mime: string;
-    dataUrl: string | null;
+  stock: number;
+  imageUrl: string | null;
+  images?: Array<{
+    id: string;
+    url: string;
+    thumbnailUrl?: string;
+    alt: string;
   }>;
 };
-
-export type CatalogSettings = {
-  whatsappPhone: string;
+export type CatalogInfo = {
+  id: string;
+  name: string;
+  welcomeText: string;
+  address: string;
+  currency: string;
+  whatsappConfigured: boolean;
   orderTtlHours: number;
-  publicEnabled: boolean;
+  total: number;
+  demo?: boolean;
+  categories: Array<{ id: string; name: string; count: number }>;
+  checkout: { channel: "whatsapp"; onlinePayments: boolean };
 };
-
-export type CatalogOrderItem = {
+export type CatalogFilters = {
+  page: number;
+  pageSize: number;
+  q: string;
+  category: string;
+  sort: "name" | "price_asc" | "price_desc" | "recent";
+};
+export type CatalogPage = {
+  items: CatalogProduct[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+};
+export type CatalogCartLine = {
   productId: string;
   name: string;
+  sku: string;
   quantity: number;
   unitPrice: number;
-  currency: string;
+  stock: number;
+  imageUrl: string | null;
+};
+export type CatalogCartInput = {
+  items: Array<{
+    productId: string;
+    quantity: number;
+    expectedUnitPrice: number;
+  }>;
+  expectedCurrency: string;
+};
+export type CatalogCartItem = CatalogCartLine & {
+  available: boolean;
   lineTotal: number;
 };
-
+export type CatalogCartReview = {
+  items: CatalogCartItem[];
+  total: number;
+  currency: string;
+  valid: boolean;
+  issues: Array<{
+    productId: string;
+    kind: "unavailable" | "stock" | "price";
+    message: string;
+  }>;
+};
+export type CatalogCheckout = CatalogCartInput & {
+  checkoutKey: string;
+  buyerName: string;
+  buyerPhone: string;
+  buyerNote: string;
+};
+export type CatalogOrderStatus =
+  | "pendiente"
+  | "confirmado"
+  | "cancelado"
+  | "vencido"
+  | "cobrado";
+export const CATALOG_ORDER_STATUS_LABELS: Record<CatalogOrderStatus, string> = {
+  pendiente: "Por atender",
+  confirmado: "Confirmado",
+  cancelado: "Cancelado",
+  vencido: "Vencido",
+  cobrado: "Cobrado (anterior)",
+};
 export type CatalogOrder = {
   id: string;
   status: CatalogOrderStatus;
   expiresAt: string;
+  createdAt: string;
   buyerName: string;
   buyerPhone: string;
   buyerNote: string;
-  items: CatalogOrderItem[];
+  items: CatalogCartItem[];
   currency: string;
   total: number;
-  whatsappSentAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  payment: { status: string; method: string | null; reference: string | null };
 };
-
-export type CatalogPublicPayload = {
-  enabled: boolean;
-  branding: { name: string; tagline: string };
-  settings: { orderTtlHours: number; whatsappConfigured: boolean };
-  products: CatalogPublicProduct[];
+export type CatalogOrderPage = {
+  orders: CatalogOrder[];
+  page: number;
+  hasMore: boolean;
 };
-
-export type CartLine = {
-  productId: string;
-  name: string;
-  unitPrice: number;
-  currency: string;
-  quantity: number;
-  imageDataUrl: string | null;
+export type CatalogCheckoutResult = {
+  conflict: false;
+  order: CatalogOrder;
+  whatsappUrl: string;
 };
+export function catalogMoney(value: number, currency: string) {
+  try {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${currency} ${Number(value).toFixed(2)}`;
+  }
+}
+export const catalogPhoneValid = (phone: string) =>
+  /^\+?[\d\s().-]+$/.test(phone.trim()) &&
+  /^[1-9]\d{7,14}$/.test(phone.replace(/\D/g, ""));
+export const cartInput = (
+  lines: CatalogCartLine[],
+  currency: string,
+): CatalogCartInput => ({
+  expectedCurrency: currency,
+  items: lines.map((line) => ({
+    productId: line.productId,
+    quantity: line.quantity,
+    expectedUnitPrice: line.unitPrice,
+  })),
+});

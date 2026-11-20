@@ -88,3 +88,34 @@ body {
 .font-display {
   font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
 }
+
+/* Public catalog: calm, mobile-first storefront, independent of the back office. */
+.catalog-surface { background: #faf9f6; color: #22352f; }
+.catalog-surface button:focus-visible,
+.catalog-surface a:focus-visible,
+.catalog-primary:focus-visible,
+.catalog-secondary:focus-visible,
+.catalog-step:focus-visible { outline: 3px solid #9bb582; outline-offset: 3px; }
+.catalog-primary, .catalog-secondary {
+  display: inline-flex; align-items: center; gap: .5rem; min-height: 2.75rem;
+  padding: .75rem 1.15rem; border-radius: .9rem; font-size: .875rem; font-weight: 600;
+  transition: background-color .18s, opacity .18s; text-decoration: none; cursor: pointer;
+}
+.catalog-primary { background: #31563d; color: #fff; }
+.catalog-primary:hover { background: #24442f; }
+.catalog-secondary { background: #eef1e7; color: #53674b; border: 1px solid #e2e7d9; }
+.catalog-secondary:hover { background: #e3ead8; }
+.catalog-primary:disabled, .catalog-secondary:disabled { opacity: .45; cursor: not-allowed; }
+.catalog-error { border: 1px solid #edcfca; border-radius: .9rem; background: #fff2ee; color: #9c4a3b; padding: .85rem 1rem; font-size: .875rem; line-height: 1.5; }
+.catalog-field { display: flex; flex-direction: column; gap: .5rem; font-size: .875rem; font-weight: 500; }
+.catalog-field input, .catalog-textarea { border: 1px solid #dce2d4; background: #fff; border-radius: .75rem; font-size: .95rem; }
+.catalog-textarea { padding: .75rem; resize: vertical; outline-color: #789763; }
+.catalog-step { display: flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: 100%; }
+.catalog-step:hover { background: #e9efdf; }
+.catalog-step:disabled { opacity: .3; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  .catalog-surface *, .catalog-primary, .catalog-secondary { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+.catalog-quantity input { appearance: textfield; -moz-appearance: textfield; }
+.catalog-quantity input::-webkit-inner-spin-button,
+.catalog-quantity input::-webkit-outer-spin-button { appearance: none; margin: 0; }
