@@ -145,6 +145,7 @@ export type AppFunctionCode =
   | "comercios"
   | "sucursales"
   | "canales"
+  | "catalogo"
   | "configuracion";
 
 export type AppFunctionMeta = {
@@ -180,6 +181,7 @@ export const APP_FUNCTIONS: AppFunctionMeta[] = [
   { code: "pedidos", label: "Pedidos" },
   { code: "mayorista", label: "Mayorista" },
   { code: "pos", label: "POS" },
+  { code: "catalogo", label: "Catálogo público" },
   { code: "configuracion", label: "Configuración" },
 ];
 
