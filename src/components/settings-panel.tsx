@@ -1,5 +1,6 @@
 "use client";
 
+import { StoreAdministration } from "@/components/catalog/catalog-admin";
 import { useState } from "react";
 import { AccountsPanel } from "@/components/accounts-panel";
 import { CategoriesPanel } from "@/components/categories-panel";
@@ -7,12 +8,13 @@ import { PriceListsPanel } from "@/components/price-lists-panel";
 import { PrintPaperSettings } from "@/components/print-paper-settings";
 import { cn } from "@/lib/utils";
 
-type SettingsTab = "impresora" | "precios" | "categorias" | "cuentas";
+type SettingsTab = "tienda" | "impresora" | "precios" | "categorias" | "cuentas";
 
 export function SettingsPanel() {
-  const [tab, setTab] = useState<SettingsTab>("impresora");
+  const [tab, setTab] = useState<SettingsTab>("tienda");
 
   const tabs: Array<{ id: SettingsTab; label: string }> = [
+    { id: "tienda", label: "Publicación de tienda" },
     { id: "impresora", label: "Impresora" },
     { id: "precios", label: "Listas de precios" },
     { id: "categorias", label: "Categorías" },
@@ -29,7 +31,7 @@ export function SettingsPanel() {
           Configuración
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Impresora, listas de precios, categorías y cuentas del local.
+          Publicación de tienda, impresora, listas de precios, categorías y cuentas del local.
         </p>
       </div>
 
@@ -60,9 +62,11 @@ export function SettingsPanel() {
         })}
       </div>
 
+      {tab === "tienda" ? <StoreAdministration section="settings" /> : null}
+
       {tab === "impresora" ? <PrintPaperSettings /> : null}
 
-      {tab !== "impresora" ? (
+      {tab !== "impresora" && tab !== "tienda" ? (
         <section className="space-y-4 rounded-xl bg-card/90 p-5 ring-1 ring-border/70 sm:p-6">
           {tab === "precios" ? <PriceListsPanel /> : null}
           {tab === "categorias" ? <CategoriesPanel /> : null}

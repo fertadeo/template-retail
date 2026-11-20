@@ -90,15 +90,19 @@ export type CatalogCheckout = CatalogCartInput & {
 };
 export type CatalogOrderStatus =
   | "pendiente"
-  | "confirmado"
+  | "en_preparacion"
+  | "listo_para_entrega"
+  | "entregado"
+  | "devolucion"
   | "cancelado"
-  | "vencido"
   | "cobrado";
 export const CATALOG_ORDER_STATUS_LABELS: Record<CatalogOrderStatus, string> = {
-  pendiente: "Por atender",
-  confirmado: "Confirmado",
+  pendiente: "Pendiente",
+  en_preparacion: "En preparación",
+  listo_para_entrega: "Listo para entrega",
+  entregado: "Entregado",
+  devolucion: "Devolución",
   cancelado: "Cancelado",
-  vencido: "Vencido",
   cobrado: "Cobrado (anterior)",
 };
 export type CatalogOrder = {
@@ -149,3 +153,12 @@ export const cartInput = (
     expectedUnitPrice: line.unitPrice,
   })),
 });
+
+export const CATALOG_ORDER_TRANSITIONS: Partial<
+  Record<CatalogOrderStatus, CatalogOrderStatus[]>
+> = {
+  pendiente: ["en_preparacion", "cancelado"],
+  en_preparacion: ["listo_para_entrega", "cancelado"],
+  listo_para_entrega: ["en_preparacion", "entregado", "cancelado"],
+  entregado: ["devolucion"],
+};

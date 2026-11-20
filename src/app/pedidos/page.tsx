@@ -1,5 +1,5 @@
-import { OrdersPanel } from "@/components/orders-panel";
+import { StoreOrdersPanel } from "@/components/store-orders-panel";
 
 export default function PedidosPage() {
-  return <OrdersPanel />;
+  return <StoreOrdersPanel />;
 }

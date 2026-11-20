@@ -857,7 +857,7 @@ export const api = {
 
   patchCatalogOrder: (
     id: string,
-    status: "pendiente" | "confirmado" | "cancelado"
+    status: Exclude<import("@/lib/catalog").CatalogOrderStatus, "cobrado">
   ) =>
     request<{ order: import("@/lib/catalog").CatalogOrder }>(
       `/catalog/orders/${id}`,
