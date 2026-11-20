@@ -6,6 +6,7 @@ import { CatalogDialog } from "@/components/catalog/catalog-dialog";
 import { api } from "@/lib/api-client";
 import {
   CATALOG_ORDER_STATUS_LABELS,
+  CATALOG_ORDER_TRANSITIONS,
   catalogMoney,
   type CatalogOrder,
 } from "@/lib/catalog";
@@ -27,7 +28,7 @@ export function CatalogOrderDialog({
   const saving = useRef(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const editable =
-    canEdit && ["pendiente", "confirmado"].includes(order.status);
+    canEdit && Boolean(CATALOG_ORDER_TRANSITIONS[order.status]?.length);
   function close() {
     if (saving.current) return;
     if (status !== order.status) setConfirmClose(true);
@@ -38,7 +39,7 @@ export function CatalogOrderDialog({
     if (
       saving.current ||
       !editable ||
-      !["pendiente", "confirmado", "cancelado"].includes(status)
+      !CATALOG_ORDER_TRANSITIONS[order.status]?.includes(status)
     )
       return;
     saving.current = true;
@@ -47,7 +48,7 @@ export function CatalogOrderDialog({
     try {
       await api.patchCatalogOrder(
         order.id,
-        status as "pendiente" | "confirmado" | "cancelado",
+        status as Exclude<CatalogOrder["status"], "cobrado">,
       );
       onSaved();
     } catch (err) {
@@ -180,19 +181,22 @@ export function CatalogOrderDialog({
                   }
                   className="h-11 rounded-xl border border-[#dce2d4] bg-white px-3"
                 >
-                  {order.status === "pendiente" ? (
-                    <option value="pendiente">Por atender</option>
-                  ) : null}
-                  <option value="confirmado">Confirmado</option>
-                  <option value="cancelado">Cancelado</option>
+                  {[
+                    order.status,
+                    ...(CATALOG_ORDER_TRANSITIONS[order.status] ?? []),
+                  ].map((value) => (
+                    <option key={value} value={value}>
+                      {CATALOG_ORDER_STATUS_LABELS[value]}
+                    </option>
+                  ))}
                 </select>
               </label>
             </form>
           ) : null}
           <p className="text-xs leading-5 text-[#788376]">
-            Preparado desde el catálogo público. El sistema no puede comprobar
-            si el cliente envió el mensaje en WhatsApp. Confirmar aquí registra
-            la atención del pedido; el cobro y la venta se registran en caja.
+            Recibido desde la tienda online. El sistema no puede comprobar si el
+            cliente envió el mensaje en WhatsApp. Cambiar el estado registra la
+            atención del pedido; el cobro y la venta se registran en caja.
           </p>
           <p className="rounded-xl bg-[#eaf0e2] p-3 text-xs leading-5 text-[#667653]">
             {order.payment.status === "not_requested"
@@ -201,7 +205,7 @@ export function CatalogOrderDialog({
                 : "Pago a coordinar con el cliente. No se generó un cobro en línea."
               : `Estado del pago: ${order.payment.status}`}
             <br />
-            Vigencia de referencia:{" "}
+            Vigencia del enlace de WhatsApp (no cancela el pedido):{" "}
             {new Date(order.expiresAt).toLocaleString("es-AR")}.
           </p>
         </div>

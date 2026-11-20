@@ -61,20 +61,25 @@ tamaño de papel o restaurar 80 mm conserva el nombre elegido.
 ## Catálogo público y pedidos por WhatsApp
 
 La URL pública es **`https://tu-dominio/tienda`**. No requiere iniciar sesión y no
-monta los proveedores privados del sistema. El menú **Catálogo público** abre
-`/catalogo`, protegido por la sesión del local.
+monta los proveedores privados del sistema. La publicación se administra en
+**Configuración → Publicación de tienda**; las solicitudes en **Pedidos → Tienda online**.
+La antigua URL `/catalogo` redirige a Configuración.
 
-1. Entrar como administrador a Catálogo público → Configurar catálogo.
+1. Entrar como administrador a Configuración → Publicación de tienda → Configurar publicación.
 2. Elegir nombre, bienvenida, moneda y vigencia; indicar WhatsApp internacional
-   (por ejemplo +54 9 …), activar Publicar catálogo y guardar.
+   (por ejemplo +54 9 …), activar Publicar tienda y guardar.
 3. Copiar el enlace público y compartirlo. Pausar la publicación bloquea nuevas
    consultas y pedidos; no elimina los pedidos guardados.
 
 Los clientes buscan por nombre/código, filtran categorías, ordenan y cargan
-páginas de 24 productos. Las fichas se comparten con `/tienda?producto=ID`.
+páginas de 24 productos. Los productos con imagen aparecen primero, antes de paginar, para todos los órdenes.
+Las fichas se comparten con `/tienda?producto=ID`.
 Solo se publican productos activos, con stock y precio de la lista predeterminada.
 Las imágenes usan endpoints públicos limitados a productos visibles del local:
-portadas/miniaturas WebP y originales solo al abrir la ficha.
+portadas/miniaturas WebP y originales solo al abrir la ficha. Las URLs públicas
+se resuelven sobre el origen de la tienda y no requieren sesión.
+En mobile: buscador fijo, grilla de dos columnas, carrito accesible con área segura
+y formularios en panel inferior con campos de 16 px para evitar zoom.
 
 El carrito se conserva por catálogo en el navegador, sin archivos base64 ni datos
 de contacto. Antes de continuar se validan precios, cantidades y disponibilidad.
@@ -83,8 +88,9 @@ nombre/teléfono/nota se abre en modal; cerrar descarta esos datos, no el carrit
 
 Preparar pedido crea una referencia y muestra el enlace a WhatsApp. El cliente
 **debe abrir WhatsApp y tocar Enviar**. La web no puede comprobar el envío y no
-lo marca como enviado/pagado. El local ve estas solicitudes en `/catalogo`, con
-estados Por atender, Confirmado, Cancelado y Vencido. No reservan stock ni generan
+lo marca como enviado/pagado. El local ve estas solicitudes en `/pedidos`, con
+estados Pendiente, En preparación, Listo para entrega, Entregado, Devolución y Cancelado.
+La vigencia del enlace no cambia el estado del pedido. No reservan stock ni generan
 ventas cobradas; cuando se concreta, se registra la venta en caja.
 
 Un identificador de intento evita duplicados al reintentar una solicitud. El

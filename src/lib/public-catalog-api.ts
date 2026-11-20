@@ -13,6 +13,25 @@ import type {
   CatalogSettings,
 } from "@/lib/catalog";
 
+function publicMediaUrls(value: unknown, field = ""): unknown {
+  if (
+    ["imageUrl", "url", "thumbnailUrl"].includes(field) &&
+    typeof value === "string" &&
+    value.startsWith("/api/catalog/public/media/")
+  ) {
+    return new URL(value, window.location.origin).href;
+  }
+  if (Array.isArray(value)) return value.map((item) => publicMediaUrls(item));
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        publicMediaUrls(item, key),
+      ]),
+    );
+  return value;
+}
+
 export class PublicCatalogError extends Error {
   constructor(
     public status: number,
@@ -59,7 +78,7 @@ async function publicRequest<T>(
         0,
         "No pudimos leer la respuesta del local. Intentá nuevamente.",
       );
-    return data as T;
+    return publicMediaUrls(data) as T;
   } catch (err) {
     if (signal?.aborted || err instanceof PublicCatalogError) throw err;
     throw new PublicCatalogError(
@@ -186,12 +205,14 @@ export const publicCatalogApi = {
         (!options.category || options.category === p.category) &&
         (!q || `${p.name} ${p.sku}`.toLowerCase().includes(q)),
     );
-    rows.sort((a, b) =>
-      options.sort === "price_asc"
-        ? a.unitPrice - b.unitPrice
-        : options.sort === "price_desc"
-          ? b.unitPrice - a.unitPrice
-          : a.name.localeCompare(b.name, "es"),
+    rows.sort(
+      (a, b) =>
+        Number(Boolean(b.imageUrl)) - Number(Boolean(a.imageUrl)) ||
+        (options.sort === "price_asc"
+          ? a.unitPrice - b.unitPrice
+          : options.sort === "price_desc"
+            ? b.unitPrice - a.unitPrice
+            : a.name.localeCompare(b.name, "es")),
     );
     const offset = (options.page - 1) * options.pageSize;
     return {

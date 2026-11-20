@@ -119,3 +119,13 @@ body {
 .catalog-quantity input { appearance: textfield; -moz-appearance: textfield; }
 .catalog-quantity input::-webkit-inner-spin-button,
 .catalog-quantity input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+
+/* Touch targets, keyboard-safe checkout and phone safe areas. */
+.catalog-surface { overflow-x: clip; }
+.catalog-cart-bar { box-shadow: 0 -8px 28px -18px #22352f55; }
+.catalog-dialog-footer { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+@media (max-width: 639px) {
+  .catalog-dialog { inset: auto 0 0; margin: 0; width: 100%; max-width: 100%; max-height: 94dvh; border-radius: 1.5rem 1.5rem 0 0; }
+  .catalog-dialog input, .catalog-dialog textarea, .catalog-dialog select { font-size: 16px; }
+  .catalog-surface button, .catalog-surface select { touch-action: manipulation; }
+}

@@ -70,7 +70,9 @@ export function CatalogSettingsDialog({
   }
   return (
     <CatalogDialog
-      title={confirmClose ? "¿Descartar los cambios?" : "Configurar catálogo"}
+      title={
+        confirmClose ? "¿Descartar los cambios?" : "Configurar publicación"
+      }
       subtitle="La información que van a ver tus clientes."
       onClose={close}
       busy={busy}
@@ -137,15 +139,15 @@ export function CatalogSettingsDialog({
               className="mt-1 size-4 accent-[#31563d]"
             />
             <span>
-              <strong className="block text-sm">Publicar catálogo</strong>
+              <strong className="block text-sm">Publicar tienda</strong>
               <span className="mt-1 block text-xs leading-5 text-[#6a7a60]">
                 Permite que cualquier persona vea productos y prepare un pedido
-                por WhatsApp. Podés pausarlo cuando lo necesites.
+                por WhatsApp. Podés pausarla cuando lo necesites.
               </span>
             </span>
           </label>
           <label className="catalog-field">
-            Nombre del catálogo
+            Nombre de la tienda
             <Input
               value={draft.displayName}
               onChange={(event) =>
@@ -211,7 +213,7 @@ export function CatalogSettingsDialog({
               </select>
             </label>
             <label className="catalog-field">
-              Vigencia del pedido (horas)
+              Vigencia del enlace de WhatsApp (horas)
               <Input
                 type="number"
                 min={1}

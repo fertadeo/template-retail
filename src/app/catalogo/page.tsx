@@ -1,4 +1,5 @@
-import { CatalogAdmin } from "@/components/catalog/catalog-admin";
-export default function CatalogAdminPage() {
-  return <CatalogAdmin />;
+import { redirect } from "next/navigation";
+
+export default function CatalogoPage() {
+  redirect("/configuracion");
 }

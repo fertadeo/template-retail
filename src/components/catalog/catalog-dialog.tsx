@@ -63,7 +63,7 @@ function CatalogDialogContent({
         )
           onClose();
       }}
-      className={`fixed inset-0 m-auto flex max-h-[calc(100dvh-1.5rem)] w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-3xl border border-black/5 bg-[#faf9f6] p-0 text-[#22352f] shadow-2xl backdrop:bg-[#142b24]/55 backdrop:backdrop-blur-sm ${wide ? "max-w-3xl" : "max-w-lg"}`}
+      className={`catalog-dialog fixed inset-0 m-auto flex max-h-[calc(100dvh-1.5rem)] w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-3xl border border-black/5 bg-[#faf9f6] p-0 text-[#22352f] shadow-2xl backdrop:bg-[#142b24]/55 backdrop:backdrop-blur-sm ${wide ? "max-w-3xl" : "max-w-lg"}`}
     >
       <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[#e6e9e2] px-5 py-5 sm:px-7">
         <div>
@@ -88,7 +88,7 @@ function CatalogDialogContent({
         {children}
       </div>
       {footer ? (
-        <footer className="shrink-0 border-t border-[#e6e9e2] bg-[#faf9f6] px-5 py-4 sm:px-7">
+        <footer className="catalog-dialog-footer shrink-0 border-t border-[#e6e9e2] bg-[#faf9f6] px-5 py-4 sm:px-7">
           {footer}
         </footer>
       ) : null}

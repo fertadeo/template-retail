@@ -268,7 +268,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
         </div>
       ) : null}
       <header className="sticky top-0 z-30 border-b border-[#e1e6da]/80 bg-[#faf9f6]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl sm:h-20 items-center justify-between gap-4 px-5 sm:px-8">
           <a
             href="/tienda"
             className="flex min-w-0 items-center gap-3"
@@ -282,7 +282,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
                 {info.name}
               </strong>
               <span className="block text-[11px] uppercase tracking-[0.18em] text-[#7d8776]">
-                Catálogo del local
+                Tienda online
               </span>
             </span>
           </a>
@@ -299,23 +299,35 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
             </span>
           </button>
         </div>
+        <label className="catalog-mobile-search relative mx-4 mb-3 block sm:hidden">
+          <span className="sr-only">Buscar producto o código</span>
+          <Search className="pointer-events-none absolute left-4 top-3.5 size-4 text-[#7b8a72]" />
+          <input
+            type="search"
+            value={q}
+            maxLength={100}
+            onChange={(event) => setQ(event.target.value)}
+            placeholder="Buscá tu próximo favorito"
+            className="h-11 w-full rounded-2xl border border-[#dce3d3] bg-white pl-11 pr-4 text-base outline-none focus:ring-2 focus:ring-[#9bb582]"
+          />
+        </label>
       </header>
       <main className="mx-auto max-w-7xl px-5 sm:px-8">
-        <section className="grid items-center gap-8 py-10 sm:py-16 lg:grid-cols-[1.2fr_0.8fr] lg:gap-20">
+        <section className="grid items-center gap-8 py-7 sm:py-16 lg:grid-cols-[1.2fr_0.8fr] lg:gap-20">
           <div>
-            <p className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6b7c57]">
+            <p className="mb-3 flex items-center sm:mb-5 gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6b7c57]">
               <span className="size-1.5 rounded-full bg-[#7c9a64]" />
               Elegí con calma. Pedí fácil.
             </p>
-            <h1 className="max-w-2xl font-display text-[clamp(2.5rem,5.2vw,4.5rem)] font-medium leading-[1.08] tracking-[-0.045em]">
+            <h1 className="max-w-2xl font-display text-[clamp(2.15rem,5.2vw,4.5rem)] font-medium leading-[1.08] tracking-[-0.045em]">
               Tus favoritos,
               <br />
               <span className="text-[#648052]">a un mensaje.</span>
             </h1>
-            <p className="mt-6 max-w-lg text-base leading-7 text-[#72806e] sm:text-lg">
+            <p className="mt-3 max-w-lg text-sm leading-6 sm:mt-6 sm:text-base sm:leading-7 text-[#72806e] sm:text-lg">
               {info.welcomeText}
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs text-[#66736b]">
+            <div className="mt-4 flex flex-wrap sm:mt-7 items-center gap-x-5 gap-y-3 text-xs text-[#66736b]">
               <span className="flex items-center gap-1.5">
                 <Check className="size-4 text-[#6d8857]" />
                 Sin crear una cuenta
@@ -327,7 +339,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
             </div>
             <a
               href="#productos"
-              className="catalog-primary mt-8 gap-3 !rounded-full"
+              className="catalog-primary mt-5 gap-3 !rounded-full sm:mt-8"
             >
               Explorar productos
               <ArrowDown className="size-4" />
@@ -376,21 +388,21 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
         ) : null}
         <section
           id="productos"
-          className="scroll-mt-24 border-t border-[#e0e5d9] pt-8"
+          className="scroll-mt-36 sm:scroll-mt-24 border-t border-[#e0e5d9] pt-8"
         >
-          <div className="mb-6 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+          <div className="mb-4 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#87907b]">
                 Encontrá eso que buscás
               </p>
               <h2 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">
-                Nuestro catálogo{" "}
+                Elegí tus favoritos{" "}
                 <span className="ml-1 align-middle font-sans text-sm font-normal text-[#8b957f]">
                   {info.total} productos
                 </span>
               </h2>
             </div>
-            <label className="relative block w-full sm:max-w-sm">
+            <label className="relative hidden w-full sm:block sm:max-w-sm">
               <span className="sr-only">Buscar por producto o código</span>
               <Search className="pointer-events-none absolute left-4 top-3.5 size-[18px] text-[#8c977f]" />
               <input
@@ -403,7 +415,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
               />
             </label>
           </div>
-          <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div
               className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:px-0"
               role="group"
@@ -445,7 +457,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
             </label>
           </div>
           {search || category ? (
-            <div className="mb-5 flex items-center justify-between gap-4 text-sm text-[#78846d]">
+            <div className="mb-3 flex items-center sm:mb-5 justify-between gap-4 text-sm text-[#78846d]">
               <p>
                 {search
                   ? `Resultados para “${search}”`
@@ -507,7 +519,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
             </div>
           ) : null}
           <div
-            className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-5 md:grid-cols-3 lg:grid-cols-4"
+            className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4"
             aria-busy={loading}
           >
             {items.map((product) => {
@@ -622,7 +634,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
         </div>
       ) : null}
       {count ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#d9e1ce] bg-[#faf9f6]/95 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:hidden">
+        <div className="catalog-cart-bar fixed inset-x-0 bottom-0 z-30 border-t border-[#d9e1ce] bg-[#faf9f6]/95 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:hidden">
           <button
             type="button"
             onClick={() => setCartOpen(true)}
@@ -679,7 +691,7 @@ function CatalogCard({
 }) {
   const maximum = inCart >= Math.min(product.stock, 99);
   return (
-    <article className="group overflow-hidden rounded-[1.35rem] border border-[#e9ecdf] bg-white p-2.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_15px_40px_-25px_#4a633a55] sm:rounded-3xl sm:p-3">
+    <article className="group min-w-0 overflow-hidden rounded-[1.35rem] border border-[#e9ecdf] bg-white p-2.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_15px_40px_-25px_#4a633a55] sm:rounded-3xl sm:p-3">
       <button
         type="button"
         onClick={onOpen}
@@ -690,13 +702,13 @@ function CatalogCard({
           <CatalogImage src={product.imageUrl} alt={product.name} contain />
         </span>
         {product.stock <= 5 ? (
-          <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2.5 py-1 text-[9px] font-medium text-[#63794e] shadow-sm">
+          <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-medium text-[#63794e] shadow-sm">
             Últimas {product.stock} unidades
           </span>
         ) : null}
       </button>
       <div className="px-1 pb-1 pt-4 sm:px-2 sm:pb-2">
-        <p className="truncate text-[9px] font-medium uppercase tracking-[0.14em] text-[#8f9b7e]">
+        <p className="truncate text-[11px] font-medium uppercase tracking-[0.14em] text-[#8f9b7e]">
           {product.categoryName}
         </p>
         <h3 className="mt-1.5 min-h-10 text-sm font-medium leading-5 text-[#354a32]">
@@ -720,7 +732,7 @@ function CatalogCard({
               ? `${product.name}, cantidad máxima agregada`
               : `Agregar ${product.name} al carrito`
           }
-          className={`mt-4 flex min-h-10 w-full items-center justify-between gap-1 rounded-full px-3 py-2 text-[11px] font-medium transition disabled:cursor-default sm:px-4 sm:text-xs ${inCart ? "bg-[#e6eddd] text-[#537345]" : "bg-[#f0f2e9] text-[#5c754d] hover:bg-[#e1e9d5]"}`}
+          className={`mt-4 flex min-h-11 w-full items-center justify-between gap-1 rounded-full px-3 py-2 text-xs font-medium transition disabled:cursor-default sm:px-4 sm:text-xs ${inCart ? "bg-[#e6eddd] text-[#537345]" : "bg-[#f0f2e9] text-[#5c754d] hover:bg-[#e1e9d5]"}`}
         >
           <span>{inCart ? `En carrito (${inCart})` : "Agregar"}</span>
           {maximum ? (
