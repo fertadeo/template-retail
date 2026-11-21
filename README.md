@@ -126,3 +126,8 @@ sin necesitar una función asignada adicional.
 
 Desplegar junto con la API y migración aditiva 019. La validación no ejecutó MySQL
 ni QA de navegador. Las pruebas de autenticación están en los repositorios API.
+
+En Centro de cuentas, los administradores pueden crear vendedores, visitantes y
+administradores. El formulario ofrece solo roles permitidos y se abre en modal.
+Crear superadmins y editar cuentas de administración existentes queda reservado
+al superadmin. La vista Ver como sigue siendo de solo lectura.
