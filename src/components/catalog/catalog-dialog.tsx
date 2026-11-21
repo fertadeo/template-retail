@@ -10,6 +10,7 @@ type Props = {
   onClose: () => void;
   busy?: boolean;
   wide?: boolean;
+  hideClose?: boolean;
   children: ReactNode;
   footer?: ReactNode;
 };
@@ -26,6 +27,7 @@ function CatalogDialogContent({
   onClose,
   busy = false,
   wide = false,
+  hideClose = false,
   children,
   footer,
 }: Props) {
@@ -74,15 +76,17 @@ function CatalogDialogContent({
             <p className="mt-1 text-sm text-[#66736b]">{subtitle}</p>
           ) : null}
         </div>
-        <button
-          type="button"
-          aria-label="Cerrar"
-          disabled={busy}
-          onClick={onClose}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e9ede6] transition hover:bg-[#dbe3d7] disabled:opacity-40"
-        >
-          <X className="size-5" />
-        </button>
+        {!hideClose ? (
+          <button
+            type="button"
+            aria-label="Cerrar"
+            disabled={busy}
+            onClick={onClose}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e9ede6] transition hover:bg-[#dbe3d7] disabled:opacity-40"
+          >
+            <X className="size-5" />
+          </button>
+        ) : null}
       </header>
       <div className="min-h-0 overflow-y-auto overscroll-contain px-5 py-5 sm:px-7">
         {children}

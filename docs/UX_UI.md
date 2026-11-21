@@ -83,7 +83,11 @@ cierre/acciones durante guardado o preparación de foto. Se muestra el email de
 login sin editar, separado del email de contacto. La foto se reduce y se sirve
 mediante una URL privada autenticada.
 
-Ver como… está reservado al superadmin. Usa la misma cuenta original para autorizar
+Ver como… admite al superadmin sobre cualquier cuenta y al administrador sobre vendedores. Usa la misma cuenta original para autorizar
 la consulta, sin pedir credenciales al vendedor. La vista muestra un aviso global
 Solo lectura y Volver a mi cuenta; las escrituras se bloquean en la API, no solo
 en los botones. El perfil del usuario consultado también permanece de solo lectura.
+
+El primer acceso de cuentas nuevas o con contraseña restablecida usa un modal
+obligatorio sin cierre ni Cancelar, con salida explícita Cerrar sesión. No monta
+los proveedores privados del sistema antes de cambiar la contraseña.

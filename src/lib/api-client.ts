@@ -95,6 +95,11 @@ async function request<T>(
       data = { error: friendlyHttpError(res.status, text) };
     }
   }
+  if (res.status === 403 && data && typeof data === "object" && "code" in data && data.code === "PASSWORD_CHANGE_REQUIRED" && typeof window !== "undefined" && window.location.pathname !== "/cambiar-contrasena") {
+    // Enforce the first-access gate even for requests from an already mounted private screen.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/cambiar-contrasena");
+  }
   if (res.status === 401 && typeof window !== "undefined") {
     // Discard cached private UI after the server rejects the session.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination

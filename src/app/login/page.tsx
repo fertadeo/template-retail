@@ -26,7 +26,7 @@ export default function LoginPage() {
       if (!response.ok) throw new Error(result.error || "No se pudo iniciar sesión.");
       const next = new URLSearchParams(window.location.search).get("next");
       const target = next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") && !next.startsWith("/login") ? next : "/";
-      window.location.assign(target);
+      window.location.assign(result.user?.mustChangePassword ? "/cambiar-contrasena" : target);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesión.");
       setBusy(false);

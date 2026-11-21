@@ -4,12 +4,14 @@ import { Eye } from "lucide-react";
 import { CatalogDialog } from "@/components/catalog/catalog-dialog";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
-import { USER_ROLE_LABELS, type UserAccount } from "@/lib/types";
+import { USER_ROLE_LABELS, type UserRole, type UserAccount } from "@/lib/types";
 export function ViewAsDialog({
   ownId,
+  role,
   onClose,
 }: {
   ownId: string;
+  role: UserRole;
   onClose: () => void;
 }) {
   const [users, setUsers] = useState<UserAccount[] | null>(null);
@@ -26,7 +28,12 @@ export function ViewAsDialog({
         if (!cancelled)
           setUsers(
             rows
-              .filter((user) => user.activa && user.id !== ownId)
+              .filter(
+                (user) =>
+                  user.activa &&
+                  user.id !== ownId &&
+                  (role === "superadmin" || user.role === "vendedor"),
+              )
               .sort(
                 (a, b) =>
                   Number(b.role === "vendedor") -
@@ -46,7 +53,7 @@ export function ViewAsDialog({
     return () => {
       cancelled = true;
     };
-  }, [ownId, attempt]);
+  }, [ownId, role, attempt]);
   async function start(id: string) {
     if (lock.current) return;
     lock.current = true;

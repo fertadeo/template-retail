@@ -1,6 +1,7 @@
 import { apiUrl } from "@/lib/api-config";
 import type { UserRole } from "@/lib/types";
 export type AccountUser = {
+  mustChangePassword?: boolean;
   id: string;
   nombre: string;
   email: string;

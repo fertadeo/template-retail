@@ -2,13 +2,16 @@
 import { useRef, useState, type FormEvent } from "react";
 import { CatalogDialog } from "@/components/catalog/catalog-dialog";
 import { Input } from "@/components/ui/input";
+import { apiUrl } from "@/lib/api-config";
 import { api } from "@/lib/api-client";
 export function PasswordDialog({
   onClose,
   onSaved,
+  mandatory = false,
 }: {
   onClose: () => void;
   onSaved: () => void;
+  mandatory?: boolean;
 }) {
   const [current, setCurrent] = useState("");
   const [password, setPassword] = useState("");
@@ -18,9 +21,28 @@ export function PasswordDialog({
   const [discard, setDiscard] = useState(false);
   const lock = useRef(false);
   function close() {
-    if (lock.current) return;
+    if (lock.current || mandatory) return;
     if (current || password || confirmation) setDiscard(true);
     else onClose();
+  }
+  async function logout() {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(apiUrl("/auth/logout"), { method: "POST" });
+      if (!response.ok)
+        throw new Error("No pudimos cerrar la sesión. Volvé a intentar.");
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/login");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "No pudimos cerrar la sesión.",
+      );
+      lock.current = false;
+      setBusy(false);
+    }
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -55,7 +77,19 @@ export function PasswordDialog({
   }
   return (
     <CatalogDialog
-      title={discard ? "¿Descartar el cambio?" : "Cambiar contraseña"}
+      title={
+        mandatory
+          ? "Creá tu contraseña"
+          : discard
+            ? "¿Descartar el cambio?"
+            : "Cambiar contraseña"
+      }
+      subtitle={
+        mandatory
+          ? "Antes de ingresar al sistema, reemplazá la contraseña temporal por una propia."
+          : undefined
+      }
+      hideClose={mandatory}
       onClose={close}
       busy={busy}
       footer={
@@ -76,9 +110,9 @@ export function PasswordDialog({
             <button
               className="catalog-secondary"
               disabled={busy}
-              onClick={close}
+              onClick={mandatory ? () => void logout() : close}
             >
-              Cancelar
+              {mandatory ? "Cerrar sesión" : "Cancelar"}
             </button>
             <button
               className="catalog-primary"
@@ -106,7 +140,7 @@ export function PasswordDialog({
             </p>
           ) : null}
           <label className="catalog-field">
-            Contraseña actual
+            {mandatory ? "Contraseña temporal" : "Contraseña actual"}
             <Input
               type="password"
               autoComplete="current-password"
