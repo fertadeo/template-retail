@@ -175,3 +175,48 @@ ajustarlo. Las nuevas operaciones se guardan en UTC. No se reescriben ventas
 históricas ni se inventan aperturas para ellas. El template demo conserva ventas
 en memoria pero no habilita aperturas/cierres o reportes reales sin la API.
 Requiere frontend/API coordinados y migración aditiva 022. Sin MySQL ni QA de navegador.
+
+## Inicio de la tienda por colecciones
+
+En Configuración → Inicio de tienda, un administrador puede diseñar colecciones
+independientes de las categorías de stock. Cada colección tiene título, portada,
+encuadre con vista previa de escritorio/celular, orden en el inicio y selección
+ordenada de productos. Se puede buscar por nombre/código, paginar de 24 en 24,
+seleccionar todos los resultados (solo IDs), revisar los seleccionados, ordenar
+con flechas o quitar la selección con confirmación. No se descargan todas las
+fichas/fotos del inventario al abrir el editor.
+
+Guardar borrador no cambia la tienda activa. Activar/Activar cambios publica una
+copia del título, foto, encuadre, orden y productos en una transacción. Editar o
+quitar una foto del borrador conserva la versión publicada hasta activar otra
+versión válida. Pausar oculta la colección sin borrar el borrador. Se controla
+la versión para evitar sobrescribir cambios de otra persona. Para activar debe
+haber título, portada y al menos un producto activo con stock y precio público.
+Los borradores pueden estar incompletos. No se publica contenido de ejemplo.
+
+El inicio público muestra las colecciones activas con productos disponibles en
+una grilla, sin carrusel. Cada imagen abre `/tienda?coleccion=ID&comercioId=...`.
+La colección conserva búsqueda, orden y carrito; abrir/cerrar una ficha en modal
+conserva la colección y la posición de lectura. Ver todos los productos y Volver
+al inicio permanecen disponibles. Las colecciones vacías se ocultan al consultar
+el inicio. Si no hay colecciones activas, se muestran los productos normalmente.
+
+Las tarjetas conservan bordes redondeados y un área de foto uniforme 3:4, con encuadre centrado object-cover para llenar el espacio. El nombre reserva dos líneas y el botón queda alineado, con área táctil
+de 44 px. Se mantiene la prioridad de productos con imagen. Dentro de una colección,
+Selección del local respeta el orden configurado dentro de cada grupo con/sin foto.
+Las portadas se optimizan a WebP con versiones de hasta 1600 px y 640 px para móvil;
+los listados no contienen blobs/base64 y las imágenes se cargan bajo demanda.
+
+Requiere desplegar junto con la API y migración aditiva 020. No se ejecutó MySQL
+ni QA de navegador durante la implementación; las pruebas aisladas de publicación
+están en el repositorio API.
+
+
+## Tienda pública y configuración
+
+- `/tienda` es pública y adaptable a móvil. Productos paginados, búsqueda y filtros en servidor, primero productos con foto; detalle con galería y carrito persistido por comercio.
+- Configuración → Publicación de tienda: habilitar publicación, nombre, bienvenida, moneda y número de WhatsApp. Configuración → Inicio de tienda: crear colecciones con título, portada y encuadre, orden y selección paginada de productos; guardar borrador, activar y pausar. Los cambios en borrador no alteran la versión publicada.
+- El checkout valida stock/precios, registra el pedido y prepara WhatsApp al teléfono del local. Pedidos → Tienda online permite gestionar Pendiente, En preparación, Listo para entrega, Entregado, Devolución y Cancelado. Abrir WhatsApp no confirma que el cliente haya enviado el mensaje.
+- Las imágenes de productos y portadas publicadas usan rutas públicas del catálogo, sin sesión. Las portadas privadas/borradores siguen protegidas. No se incorporan datos ni fotografías de clientes particulares en la plantilla.
+- Configurar `NEXT_PUBLIC_API_URL` en frontend y `NEXT_PUBLIC_SITE_URL` con su dominio público para enlaces y metadatos. Antes de desplegar frontend, desplegar API y sus migraciones; no habilitar la tienda hasta configurar WhatsApp y publicar productos.
+- No hay cobro electrónico: el flujo actual coordina el pedido por WhatsApp. No se ejecutaron MySQL ni QA de navegador al trasladar estos cambios.

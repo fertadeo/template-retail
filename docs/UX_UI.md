@@ -103,3 +103,20 @@ compara efectivo esperado/contado, separa transferencias y muestra diferencias.
 Reportes incorpora ventas por día y CSV, además del historial de cierres y las
 ventas por vendedor existentes. Ver como conserva acceso de consulta y bloquea
 las operaciones reales en la API.
+
+## Colecciones del inicio público
+
+Configuración → Inicio de tienda contiene el editor de colecciones. Son selecciones
+editoriales; no reclasifican productos ni modifican stock. Altas y ediciones usan
+un modal con foco contenido, header/footer fijos, scroll interno, confirmación al
+descartar y bloqueo durante guardado/procesamiento de imagen. La portada tiene
+vista previa en proporciones 4:3 de escritorio y 4:5 de celular, con encuadre ajustable.
+Guardar borrador conserva lo publicado; Activar publica la versión completa.
+
+El inicio prioriza imágenes de colecciones en dos columnas móviles y tres en
+escritorio, títulos legibles sobre degradado y enlaces de toda la superficie.
+No hay carruseles ni datos de ejemplo. Una colección vacía/inactiva no se ofrece.
+Los productos tienen tarjetas redondeadas, fotos en un área uniforme 3:4 con object-cover centrado, texto/precio discretos
+y botón de borde fino de 44 px. El buscador fijo y el carrito siguen accesibles.
+
+Las tarjetas de tienda mantienen tamaño uniforme y botones alineados. Las fotos se amplían proporcionalmente hasta cubrir el área, recortando los bordes sobrantes. Se conservan los modales, navegación móvil y carrito accesible.

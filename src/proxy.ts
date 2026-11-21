@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const publicPage = path === "/login" || path === "/tienda";
+  const publicPage = path === "/icon" || path === "/login" || path === "/tienda" || path.startsWith("/tienda/");
   if (publicPage) return NextResponse.next();
 
   const cookie = request.cookies.get("aurix_session");

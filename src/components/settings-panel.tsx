@@ -1,5 +1,6 @@
 "use client";
 
+import { CollectionsManager } from "@/components/catalog/collections-manager";
 import { StoreAdministration } from "@/components/catalog/catalog-admin";
 import { useState } from "react";
 import { AccountsPanel } from "@/components/accounts-panel";
@@ -8,13 +9,14 @@ import { PriceListsPanel } from "@/components/price-lists-panel";
 import { PrintPaperSettings } from "@/components/print-paper-settings";
 import { cn } from "@/lib/utils";
 
-type SettingsTab = "tienda" | "impresora" | "precios" | "categorias" | "cuentas";
+type SettingsTab = "inicio" | "tienda" | "impresora" | "precios" | "categorias" | "cuentas";
 
 export function SettingsPanel() {
   const [tab, setTab] = useState<SettingsTab>("tienda");
 
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: "tienda", label: "Publicación de tienda" },
+    { id: "inicio", label: "Inicio de tienda" },
     { id: "impresora", label: "Impresora" },
     { id: "precios", label: "Listas de precios" },
     { id: "categorias", label: "Categorías" },
@@ -71,6 +73,7 @@ export function SettingsPanel() {
           {tab === "precios" ? <PriceListsPanel /> : null}
           {tab === "categorias" ? <CategoriesPanel /> : null}
           {tab === "cuentas" ? <AccountsPanel /> : null}
+          {tab === "inicio" ? <CollectionsManager /> : null}
         </section>
       ) : null}
     </div>
