@@ -140,9 +140,12 @@ function friendlyHttpError(status: number, body: string): string {
 
 export const api = {
   getLocalBusiness: () => request<Comercio>("/business"),
-  getSession: () => request<{
-    user: { id: string; nombre: string; email: string; role: import("@/lib/types").UserRole };
-  }>("/auth/session"),
+  getSession: () => request<import("@/lib/account").AccountSession>("/auth/session"),
+  getAccountProfile: () => request<import("@/lib/account").AccountProfile>("/auth/profile"),
+  updateAccountProfile: (body:import("@/lib/account").ProfileDraft) => request<import("@/lib/account").AccountProfile>("/auth/profile", {method:"PATCH",body:JSON.stringify(body)}),
+  changeOwnPassword: (body:{currentPassword:string;newPassword:string}) => request<{ok:boolean}>("/auth/password", {method:"PUT",body:JSON.stringify(body)}),
+  startViewAs: (userId:string) => request<{ok:boolean}>("/auth/view-as", {method:"POST",body:JSON.stringify({userId})}),
+  stopViewAs: () => request<{ok:boolean}>("/auth/view-as/stop", {method:"POST"}),
   health: () =>
     request<{ ok: boolean; db: boolean }>("/health"),
 

@@ -103,3 +103,26 @@ reales; la configuración demo se guarda solo en este navegador.
 Desplegar frontend y API juntos, incluyendo la migración aditiva 018. El boot de
 la API la aplica junto a las demás migraciones históricas. Durante esta tarea no
 se ejecutó MySQL. La mejora de latencia no se midió contra producción.
+
+
+## Mi cuenta
+
+El bloque Cuenta del sidebar abre `/mi-cuenta` para cualquier usuario conectado.
+Muestra foto, nombre, rol, email de login y datos de contacto. Editar perfil abre
+un modal con foto JPG/PNG/WebP (hasta 8 MB de origen, reducida a 512 px antes de
+subir), nombre, teléfono y email de contacto. El email de contacto es independiente
+del email de acceso. Las fotos requieren sesión y no aparecen en la tienda pública.
+Cambiar contraseña abre un modal con contraseña actual, nueva y confirmación;
+se mantienen este navegador y se cierran las demás sesiones de esa cuenta.
+No se guardan contraseñas en localStorage ni se pide la contraseña de otro usuario.
+
+El superadmin tiene Ver como… en el sidebar y en Mi cuenta. Elige una cuenta activa
+y entra a una vista de solo lectura con un aviso permanente y Volver a mi cuenta.
+La sesión del superadmin permanece como autoridad y la contraseña del vendedor
+es independiente. Al entrar/salir se hace navegación completa para descartar
+pantallas y consultas de la identidad anterior. En la vista no se permite editar
+perfiles, contraseñas ni otros datos del sistema. Mi cuenta siempre está disponible
+sin necesitar una función asignada adicional.
+
+Desplegar junto con la API y migración aditiva 019. La validación no ejecutó MySQL
+ni QA de navegador. Las pruebas de autenticación están en los repositorios API.

@@ -72,3 +72,18 @@ La tienda prioriza productos con imagen antes de paginar. En teléfonos el busca
 permanece visible, los controles tienen área táctil amplia y los modales se abren
 como panel inferior respetando el teclado y las áreas seguras. Las imágenes usan
 URLs públicas de la tienda sin requerir sesión ni credenciales de acceso.
+
+
+## Perfil personal y consulta de cuentas
+
+Mi cuenta se abre desde el pie del sidebar y está disponible para todos los roles.
+Perfil, contacto y contraseña se consultan en una página; las ediciones viven en
+modales adaptables con foco contenido, confirmación al descartar y bloqueo de
+cierre/acciones durante guardado o preparación de foto. Se muestra el email de
+login sin editar, separado del email de contacto. La foto se reduce y se sirve
+mediante una URL privada autenticada.
+
+Ver como… está reservado al superadmin. Usa la misma cuenta original para autorizar
+la consulta, sin pedir credenciales al vendedor. La vista muestra un aviso global
+Solo lectura y Volver a mi cuenta; las escrituras se bloquean en la API, no solo
+en los botones. El perfil del usuario consultado también permanece de solo lectura.
