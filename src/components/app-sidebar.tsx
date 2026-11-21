@@ -86,7 +86,7 @@ export function AppSidebar({
             );
           })}
         </nav>
-        <SidebarAccount />
+        <SidebarAccount onNavigate={onClose} />
       </aside>
     </>
   );

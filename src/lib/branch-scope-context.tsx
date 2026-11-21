@@ -59,7 +59,8 @@ export function BranchScopeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    reload();
+    const timer = setTimeout(() => void reload(), 0);
+    return () => clearTimeout(timer);
   }, [reload]);
 
   function setBranchScope() { setBranchScopeState("all"); }

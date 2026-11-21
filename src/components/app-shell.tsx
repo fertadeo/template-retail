@@ -1,5 +1,7 @@
 "use client";
 
+import { AccountSessionProvider } from "@/lib/account-session";
+import { ViewAsBanner } from "@/components/account/view-as-banner";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
@@ -43,6 +45,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
             {vendedor ? <p className="text-xs text-muted-foreground">Operador: {vendedor.nombre}</p> : null}
           </div>
         </header>
+        <ViewAsBanner />
         <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="mx-auto w-full max-w-7xl animate-aurix-fade">
             {children}
@@ -59,10 +62,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
   return (
+    <AccountSessionProvider>
     <ComercioProvider>
       <BranchScopeProvider>
         <ShellInner>{children}</ShellInner>
       </BranchScopeProvider>
     </ComercioProvider>
+    </AccountSessionProvider>
   );
 }
