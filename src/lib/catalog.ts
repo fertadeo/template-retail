@@ -34,6 +34,7 @@ export type CatalogInfo = {
   orderTtlHours: number;
   total: number;
   demo?: boolean;
+  collections: import("@/lib/collections").StoreCollection[];
   categories: Array<{ id: string; name: string; count: number }>;
   checkout: { channel: "whatsapp"; onlinePayments: boolean };
 };
@@ -42,9 +43,11 @@ export type CatalogFilters = {
   pageSize: number;
   q: string;
   category: string;
-  sort: "name" | "price_asc" | "price_desc" | "recent";
+  collection?: string;
+  sort: "name" | "price_asc" | "price_desc" | "recent" | "featured";
 };
 export type CatalogPage = {
+  collection?: {id:string;title:string}|null;
   items: CatalogProduct[];
   page: number;
   pageSize: number;

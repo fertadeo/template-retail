@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  ArrowDown,
+  ArrowLeft,
   ArrowRight,
   Check,
   MapPin,
@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { CollectionArtwork } from "@/components/catalog/collection-artwork";
 import { CatalogImage } from "@/components/catalog/catalog-image";
 import { CatalogCartDialog } from "@/components/catalog/cart-dialog";
 import { CatalogProductDialog } from "@/components/catalog/product-dialog";
@@ -34,9 +35,11 @@ import {
 } from "@/lib/catalog-cart";
 
 export function PublicCatalog() {
+  const scope = useSearchParams().get("comercioId") ?? "";
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{
     attempt: number;
+    scope: string;
     info?: CatalogInfo;
     error?: string;
     closed?: boolean;
@@ -46,12 +49,13 @@ export function PublicCatalog() {
     publicCatalogApi
       .info(controller.signal)
       .then((info) => {
-        if (!controller.signal.aborted) setResult({ attempt, info });
+        if (!controller.signal.aborted) setResult({ attempt, scope, info });
       })
       .catch((err) => {
         if (!controller.signal.aborted)
           setResult({
             attempt,
+            scope,
             error:
               err instanceof Error
                 ? err.message
@@ -60,8 +64,9 @@ export function PublicCatalog() {
           });
       });
     return () => controller.abort();
-  }, [attempt]);
-  const current = result?.attempt === attempt ? result : null;
+  }, [attempt, scope]);
+  const current =
+    result?.attempt === attempt && result.scope === scope ? result : null;
   if (!current)
     return (
       <div className="catalog-surface flex min-h-dvh flex-col items-center justify-center gap-5">
@@ -103,17 +108,42 @@ export function PublicCatalog() {
 
 function CatalogStorefront({ info }: { info: CatalogInfo }) {
   const params = useSearchParams();
-  const [q, setQ] = useState(() => params.get("buscar")?.slice(0, 100) || "");
-  const [search, setSearch] = useState(q);
-  const [category, setCategory] = useState(
-    () => params.get("categoria")?.slice(0, 64) || "",
-  );
-  const [sort, setSort] = useState<CatalogFilters["sort"]>(() => {
-    const value = params.get("orden");
-    return ["price_asc", "price_desc", "recent"].includes(value ?? "")
-      ? (value as CatalogFilters["sort"])
-      : "name";
+  const collection = params.get("coleccion")?.slice(0, 36) || "";
+  const search = params.get("buscar")?.slice(0, 100) || "";
+  const category = params.get("categoria")?.slice(0, 64) || "";
+  const defaultSort = collection ? "featured" : "name";
+  const requestedSort = params.get("orden");
+  const sort: CatalogFilters["sort"] = [
+    "name",
+    "price_asc",
+    "price_desc",
+    "recent",
+    ...(collection ? ["featured"] : []),
+  ].includes(requestedSort ?? "")
+    ? (requestedSort as CatalogFilters["sort"])
+    : defaultSort;
+  const [searchDraft, setSearchDraft] = useState({
+    base: search,
+    value: search,
   });
+  if (searchDraft.base !== search)
+    setSearchDraft({
+      base: search,
+      value: searchDraft.value.trim() === search ? searchDraft.value : search,
+    });
+  const q =
+    searchDraft.base === search || searchDraft.value.trim() === search
+      ? searchDraft.value
+      : search;
+  function setQ(value: string) {
+    setSearchDraft({ base: search, value });
+  }
+  const home =
+    !collection && !search && !category && params.get("ver") !== "todos";
+  const ProductsHeading = home ? "h2" : "h1";
+  const selectedCollection = info.collections?.find(
+    (item) => item.id === collection,
+  );
   const [lines, setLines] = useState<CatalogCartLine[]>(() =>
     readCatalogCart(info.id),
   );
@@ -129,20 +159,25 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
   }, [info.id, lines]);
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setSearch(q.trim());
       const url = new URL(window.location.href);
       if (q.trim()) url.searchParams.set("buscar", q.trim());
       else url.searchParams.delete("buscar");
       window.history.replaceState(null, "", url);
     }, 250);
     return () => clearTimeout(timeout);
-  }, [q]);
+  }, [q, search]);
   useEffect(() => {
     if (!notice) return;
     const timeout = setTimeout(() => setNotice(""), 3500);
     return () => clearTimeout(timeout);
   }, [notice]);
-  const filterKey = JSON.stringify([search, category, sort, info.currency]);
+  const filterKey = JSON.stringify([
+    search,
+    category,
+    sort,
+    collection,
+    info.currency,
+  ]);
   const [cursor, setCursor] = useState({ key: filterKey, page: 1 });
   if (cursor.key !== filterKey) setCursor({ key: filterKey, page: 1 });
   const page = cursor.key === filterKey ? cursor.page : 1;
@@ -153,13 +188,14 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
     filters: string;
     items: CatalogProduct[];
     hasMore: boolean;
+    collectionTitle?: string;
     error?: string;
   } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     publicCatalogApi
       .products(
-        { page, pageSize: 24, q: search, category, sort },
+        { page, pageSize: 24, q: search, category, sort, collection },
         controller.signal,
       )
       .then((data) => {
@@ -174,6 +210,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
             filters: filterKey,
             items: [...new Map(items.map((item) => [item.id, item])).values()],
             hasMore: data.hasMore,
+            collectionTitle: data.collection?.title,
           };
         });
       })
@@ -204,15 +241,45 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
     0,
   );
   function filters(nextCategory: string, nextSort: CatalogFilters["sort"]) {
-    setCategory(nextCategory);
-    setSort(nextSort);
     const url = new URL(window.location.href);
     if (nextCategory) url.searchParams.set("categoria", nextCategory);
     else url.searchParams.delete("categoria");
-    if (nextSort !== "name") url.searchParams.set("orden", nextSort);
+    if (nextSort !== defaultSort) url.searchParams.set("orden", nextSort);
     else url.searchParams.delete("orden");
     window.history.replaceState(null, "", url);
   }
+  function browseCollection(id: string | null) {
+    const url = new URL(window.location.href);
+    for (const key of [
+      "producto",
+      "categoria",
+      "buscar",
+      "orden",
+      "coleccion",
+      "ver",
+    ])
+      url.searchParams.delete(key);
+    if (id) url.searchParams.set("coleccion", id);
+    else if (id === "") url.searchParams.set("ver", "todos");
+    setQ("");
+    window.history.pushState(null, "", url);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(
+          id === null ? "store-home-title" : "store-products-heading",
+        )
+        ?.focus({ preventScroll: true });
+      if (id === null) window.scrollTo({ top: 0 });
+      else
+        document
+          .getElementById("productos")
+          ?.scrollIntoView({ block: "start" });
+    });
+  }
+  const collectionTitle =
+    selectedCollection?.title ||
+    (result?.filters === filterKey ? result.collectionTitle : undefined) ||
+    "Colección";
   function openProduct(id: string) {
     const url = new URL(window.location.href);
     url.searchParams.set("producto", id);
@@ -270,7 +337,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
       <header className="sticky top-0 z-30 border-b border-[#e1e6da]/80 bg-[#faf9f6]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl sm:h-20 items-center justify-between gap-4 px-5 sm:px-8">
           <a
-            href="/tienda"
+            href={`/tienda?comercioId=${encodeURIComponent(info.id)}`}
             className="flex min-w-0 items-center gap-3"
             aria-label={`${info.name}, inicio del catálogo`}
           >
@@ -312,62 +379,89 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
           />
         </label>
       </header>
-      <main className="mx-auto max-w-7xl px-5 sm:px-8">
-        <section className="grid items-center gap-8 py-7 sm:py-16 lg:grid-cols-[1.2fr_0.8fr] lg:gap-20">
-          <div>
-            <p className="mb-3 flex items-center sm:mb-5 gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6b7c57]">
-              <span className="size-1.5 rounded-full bg-[#7c9a64]" />
-              Elegí con calma. Pedí fácil.
-            </p>
-            <h1 className="max-w-2xl font-display text-[clamp(2.15rem,5.2vw,4.5rem)] font-medium leading-[1.08] tracking-[-0.045em]">
-              Tus favoritos,
-              <br />
-              <span className="text-[#648052]">a un mensaje.</span>
-            </h1>
-            <p className="mt-3 max-w-lg text-sm leading-6 sm:mt-6 sm:text-base sm:leading-7 text-[#72806e] sm:text-lg">
-              {info.welcomeText}
-            </p>
-            <div className="mt-4 flex flex-wrap sm:mt-7 items-center gap-x-5 gap-y-3 text-xs text-[#66736b]">
-              <span className="flex items-center gap-1.5">
-                <Check className="size-4 text-[#6d8857]" />
-                Sin crear una cuenta
-              </span>
-              <span className="flex items-center gap-1.5">
-                <MessageCircle className="size-4 text-[#6d8857]" />
-                Atención directa del local
-              </span>
-            </div>
-            <a
-              href="#productos"
-              className="catalog-primary mt-5 gap-3 !rounded-full sm:mt-8"
-            >
-              Explorar productos
-              <ArrowDown className="size-4" />
-            </a>
-          </div>
-          <div className="relative hidden min-h-72 overflow-hidden rounded-[2rem] bg-[#e8eddf] p-8 sm:block sm:min-h-64 lg:min-h-80 lg:p-10">
-            <div
-              aria-hidden="true"
-              className="absolute -right-10 -top-14 size-52 rounded-full border-[30px] border-[#dce5cc]/80"
-            />
-            <MessageCircle
-              aria-hidden="true"
-              className="relative mb-6 size-10 text-[#5a7549]"
-              strokeWidth={1.3}
-            />
-            <p className="relative max-w-xs font-display text-3xl font-medium leading-tight tracking-tight text-[#3e5636]">
-              Un carrito.
-              <br />
-              Una conversación.
-              <br />
-              Tu próximo pedido.
-            </p>
-            <div className="relative mt-7 flex items-center gap-3 text-[11px] uppercase tracking-[0.12em] text-[#748366]">
-              <span className="h-px w-8 bg-[#a5b58f]" />
-              Hecho para comprar cerca
-            </div>
-          </div>
-        </section>
+      <main className="mx-auto max-w-7xl px-3 sm:px-8">
+        {home ? (
+          <>
+            <section className="py-7 sm:py-10">
+              <p className="text-[10px] uppercase tracking-[.18em] text-[#7b866f]">
+                Elegí con calma. Pedí fácil.
+              </p>
+              <h1
+                id="store-home-title"
+                tabIndex={-1}
+                className="mt-2 max-w-3xl font-display text-3xl font-medium tracking-tight sm:text-4xl"
+              >
+                Encontrá tu próximo favorito.
+              </h1>
+              {info.welcomeText ? (
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-[#72806e]">
+                  {info.welcomeText}
+                </p>
+              ) : null}
+            </section>
+            {Boolean(info.collections?.length) ? (
+              <section
+                aria-labelledby="home-collections-title"
+                className="pb-8 sm:pb-12"
+              >
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2
+                    id="home-collections-title"
+                    className="font-display text-xl font-medium sm:text-2xl"
+                  >
+                    Elegí tu estilo
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => browseCollection("")}
+                    className="min-h-11 text-xs font-medium underline underline-offset-4"
+                  >
+                    Ver todos los productos
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:gap-5 lg:grid-cols-3">
+                  {info.collections.map((item, index) => (
+                    <a
+                      key={item.id}
+                      href={`/tienda?${new URLSearchParams({ comercioId: info.id, coleccion: item.id })}`}
+                      aria-label={`Ver colección ${item.title}`}
+                      className="group block outline-none focus-visible:ring-2 focus-visible:ring-[#56744a] focus-visible:ring-offset-4"
+                      onClick={(event) => {
+                        if (
+                          !event.metaKey &&
+                          !event.ctrlKey &&
+                          !event.shiftKey &&
+                          !event.altKey &&
+                          event.button === 0
+                        ) {
+                          event.preventDefault();
+                          browseCollection(item.id);
+                        }
+                      }}
+                    >
+                      <CollectionArtwork
+                        title={item.title}
+                        imageUrl={item.imageUrl}
+                        focalX={item.focalX}
+                        focalY={item.focalY}
+                        eager={index < 2}
+                      />
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => browseCollection(null)}
+            className="my-4 flex min-h-11 items-center gap-2 text-xs text-[#66736b]"
+          >
+            <ArrowLeft className="size-4" />
+            Volver al inicio
+          </button>
+        )}
         {lastOrder ? (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#e7eedf] px-5 py-4 text-sm">
             <span>
@@ -395,12 +489,20 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#87907b]">
                 Encontrá eso que buscás
               </p>
-              <h2 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">
-                Elegí tus favoritos{" "}
+              <ProductsHeading
+                id="store-products-heading"
+                tabIndex={-1}
+                className="mt-1 font-display text-2xl font-medium sm:text-3xl"
+              >
+                {collection ? collectionTitle : "Todos los productos"}{" "}
                 <span className="ml-1 align-middle font-sans text-sm font-normal text-[#8b957f]">
-                  {info.total} productos
+                  {collection
+                    ? selectedCollection
+                      ? `${selectedCollection.count} productos`
+                      : ""
+                    : `${info.total} productos`}
                 </span>
-              </h2>
+              </ProductsHeading>
             </div>
             <label className="relative hidden w-full sm:block sm:max-w-sm">
               <span className="sr-only">Buscar por producto o código</span>
@@ -416,26 +518,28 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
             </label>
           </div>
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div
-              className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:px-0"
-              role="group"
-              aria-label="Filtrar por categoría"
-            >
-              {[
-                { id: "", name: "Todo", count: info.total },
-                ...info.categories,
-              ].map((cat) => (
-                <button
-                  type="button"
-                  key={cat.id}
-                  onClick={() => filters(cat.id, sort)}
-                  aria-pressed={category === cat.id}
-                  className={`shrink-0 rounded-full border px-4 py-2.5 text-xs font-medium transition ${category === cat.id ? "border-[#31523c] bg-[#31523c] text-white" : "border-[#e1e6d9] bg-transparent text-[#77826e] hover:border-[#a6b592]"}`}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
+            {!collection ? (
+              <div
+                className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0"
+                role="group"
+                aria-label="Filtrar por categoría"
+              >
+                {[
+                  { id: "", name: "Todo", count: info.total },
+                  ...info.categories,
+                ].map((cat) => (
+                  <button
+                    type="button"
+                    key={cat.id}
+                    onClick={() => filters(cat.id, sort)}
+                    aria-pressed={category === cat.id}
+                    className={`shrink-0 rounded-full border px-4 py-2.5 text-xs font-medium transition ${category === cat.id ? "border-[#31523c] bg-[#31523c] text-white" : "border-[#e1e6d9] bg-transparent text-[#77826e] hover:border-[#a6b592]"}`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <label className="flex shrink-0 items-center gap-2 text-xs text-[#78846d]">
               <SlidersHorizontal className="size-3.5" />
               <span className="sr-only">Ordenar productos</span>
@@ -449,6 +553,9 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
                 }
                 className="max-w-full bg-transparent py-2 outline-none focus-visible:ring-2 focus-visible:ring-[#81996c]"
               >
+                {collection ? (
+                  <option value="featured">Selección del local</option>
+                ) : null}
                 <option value="name">Nombre A–Z</option>
                 <option value="recent">Más recientes</option>
                 <option value="price_asc">Menor precio</option>
@@ -519,7 +626,7 @@ function CatalogStorefront({ info }: { info: CatalogInfo }) {
             </div>
           ) : null}
           <div
-            className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4"
+            className="grid grid-cols-2 gap-x-2 gap-y-5 sm:gap-x-5 sm:gap-y-7 md:grid-cols-3 lg:grid-cols-4"
             aria-busy={loading}
           >
             {items.map((product) => {
@@ -691,15 +798,15 @@ function CatalogCard({
 }) {
   const maximum = inCart >= Math.min(product.stock, 99);
   return (
-    <article className="group min-w-0 overflow-hidden rounded-[1.35rem] border border-[#e9ecdf] bg-white p-2.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_15px_40px_-25px_#4a633a55] sm:rounded-3xl sm:p-3">
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-[1.35rem] border border-[#e9ecdf] bg-white transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_15px_40px_-25px_#4a633a55] sm:rounded-3xl">
       <button
         type="button"
         onClick={onOpen}
         aria-label={`Ver ${product.name}`}
-        className="relative block aspect-square w-full overflow-hidden rounded-[1rem] bg-[#f0f1e9] sm:rounded-2xl"
+        className="relative block aspect-[3/4] w-full shrink-0 overflow-hidden bg-[#f0f1e9]"
       >
-        <span className="block size-full p-3 transition duration-500 group-hover:scale-105">
-          <CatalogImage src={product.imageUrl} alt={product.name} contain />
+        <span className="absolute inset-0 block">
+          <CatalogImage src={product.imageUrl} alt={product.name} />
         </span>
         {product.stock <= 5 ? (
           <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-medium text-[#63794e] shadow-sm">
@@ -707,11 +814,11 @@ function CatalogCard({
           </span>
         ) : null}
       </button>
-      <div className="px-1 pb-1 pt-4 sm:px-2 sm:pb-2">
+      <div className="flex flex-1 flex-col px-3 pb-3 pt-4 sm:px-4 sm:pb-4">
         <p className="truncate text-[11px] font-medium uppercase tracking-[0.14em] text-[#8f9b7e]">
           {product.categoryName}
         </p>
-        <h3 className="mt-1.5 min-h-10 text-sm font-medium leading-5 text-[#354a32]">
+        <h3 className="mt-1.5 h-10 overflow-hidden text-sm font-medium leading-5 text-[#354a32]">
           <button
             type="button"
             onClick={onOpen}

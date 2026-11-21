@@ -17,7 +17,7 @@ function publicMediaUrls(value: unknown, field = ""): unknown {
   if (
     ["imageUrl", "url", "thumbnailUrl"].includes(field) &&
     typeof value === "string" &&
-    value.startsWith("/api/catalog/public/media/")
+    value.startsWith("/api/catalog/public/")
   ) {
     return new URL(value, window.location.origin).href;
   }
@@ -179,6 +179,7 @@ export const publicCatalogApi = {
     return {
       id: "demo",
       demo: true,
+      collections: [],
       name: settings.displayName,
       welcomeText: settings.welcomeText,
       address: "",

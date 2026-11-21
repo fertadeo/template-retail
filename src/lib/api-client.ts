@@ -150,6 +150,17 @@ export const api = {
   cashHistory: (page:number,signal?:AbortSignal) => request<import("@/lib/cash").CashHistory>(`/cash/history?page=${page}`,{signal}),
   dailySales: (from:string,to:string,signal?:AbortSignal) => request<import("@/lib/cash").DailySales>(`/cash/daily-sales?${new URLSearchParams({from,to})}`,{signal}),
   getLocalBusiness: () => request<Comercio>("/business"),
+  listStoreCollections: (signal?:AbortSignal) => request<import("@/lib/collections").CollectionMeta[]>("/catalog/collections",{signal}),
+  getStoreCollection: (id:string,signal?:AbortSignal) => request<import("@/lib/collections").CollectionDetail>(`/catalog/collections/${encodeURIComponent(id)}`,{signal}),
+  saveStoreCollection: (id:string|undefined,body:import("@/lib/collections").CollectionInput) => request<import("@/lib/collections").CollectionDetail>(`/catalog/collections${id ? `/${encodeURIComponent(id)}` : ""}`,{method:id ? "PUT" : "POST",body:JSON.stringify(body)}),
+  publishStoreCollection: (id:string,revision:number) => request<import("@/lib/collections").CollectionDetail>(`/catalog/collections/${encodeURIComponent(id)}/publish`,{method:"POST",body:JSON.stringify({revision})}),
+  pauseStoreCollection: (id:string,revision:number) => request<import("@/lib/collections").CollectionDetail>(`/catalog/collections/${encodeURIComponent(id)}/pause`,{method:"POST",body:JSON.stringify({revision})}),
+  collectionProducts: (options:{page:number;q:string;ids?:string[]},signal?:AbortSignal) => {
+    const params=new URLSearchParams({page:String(options.ids ? 1 : options.page),q:options.q});
+    if(options.ids)params.set("ids",options.ids.join(","));
+    return request<import("@/lib/collections").PickerPage>(`/catalog/collections/products?${params}`,{signal});
+  },
+  collectionProductIds: (q:string) => request<{ids:string[]}>(`/catalog/collections/product-ids?${new URLSearchParams({q})}`),
   getSession: () => request<import("@/lib/account").AccountSession>("/auth/session"),
   getAccountProfile: () => request<import("@/lib/account").AccountProfile>("/auth/profile"),
   updateAccountProfile: (body:import("@/lib/account").ProfileDraft) => request<import("@/lib/account").AccountProfile>("/auth/profile", {method:"PATCH",body:JSON.stringify(body)}),
