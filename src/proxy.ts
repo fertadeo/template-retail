@@ -15,7 +15,13 @@ export async function proxy(request: NextRequest) {
         headers: { Cookie: `aurix_session=${cookie.value}` },
         cache: "no-store", signal: AbortSignal.timeout(5000),
       });
-      if (response.ok) return NextResponse.next();
+      if (response.ok) {
+        const session = await response.json();
+        const owner = session.actor ?? session.user;
+        if (owner?.mustChangePassword && path !== "/cambiar-contrasena") return NextResponse.redirect(new URL("/cambiar-contrasena",request.url));
+        if (!owner?.mustChangePassword && path === "/cambiar-contrasena") return NextResponse.redirect(new URL("/",request.url));
+        return NextResponse.next();
+      }
     } catch { /* Fail closed when session verification is unavailable. */ }
   }
   const url = new URL("/login", request.url);

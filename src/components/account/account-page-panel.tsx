@@ -144,17 +144,20 @@ export function MyAccountPanel() {
               Cambiar contraseña
             </Button>
           </section>
-          {user.role === "superadmin" && !session?.actor && !demo ? (
+          {["superadmin", "administrador"].includes(user.role) &&
+          !session?.actor &&
+          !demo ? (
             <section className="flex flex-wrap items-center justify-between gap-5 rounded-2xl bg-teal/5 p-5 ring-1 ring-teal/20 sm:p-8">
               <div className="flex items-start gap-3">
                 <ShieldCheck className="mt-1 size-5 text-teal" />
                 <div>
                   <h2 className="font-display text-lg font-semibold">
-                    Herramientas del superadmin
+                    Herramientas de administración
                   </h2>
                   <p className="mt-1 max-w-lg text-sm leading-6 text-muted-foreground">
-                    Consultá la cuenta de otro usuario en modo solo lectura, sin
-                    conocer su contraseña.
+                    Consultá cuentas de vendedores en modo solo lectura, sin
+                    conocer su contraseña. El superadmin también puede consultar
+                    los demás roles.
                   </p>
                 </div>
               </div>
@@ -189,8 +192,15 @@ export function MyAccountPanel() {
           }}
         />
       ) : null}
-      {modal === "view" && user?.role === "superadmin" && !session?.actor ? (
-        <ViewAsDialog ownId={user.id} onClose={() => setModal(null)} />
+      {modal === "view" &&
+      user &&
+      ["superadmin", "administrador"].includes(user.role) &&
+      !session?.actor ? (
+        <ViewAsDialog
+          role={user.role}
+          ownId={user.id}
+          onClose={() => setModal(null)}
+        />
       ) : null}
     </div>
   );

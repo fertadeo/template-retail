@@ -55,7 +55,9 @@ export function SidebarAccount({ onNavigate }: { onNavigate?: () => void }) {
           </span>
         </span>
       </Link>
-      {user?.role === "superadmin" && !session?.actor && !demo ? (
+      {["superadmin", "administrador"].includes(user?.role ?? "") &&
+      !session?.actor &&
+      !demo ? (
         <button
           type="button"
           onClick={() => setView(true)}
@@ -80,8 +82,12 @@ export function SidebarAccount({ onNavigate }: { onNavigate?: () => void }) {
           {error}
         </p>
       ) : null}
-      {view && user?.role === "superadmin" ? (
-        <ViewAsDialog ownId={user.id} onClose={() => setView(false)} />
+      {view && user && ["superadmin", "administrador"].includes(user.role) ? (
+        <ViewAsDialog
+          role={user.role}
+          ownId={user.id}
+          onClose={() => setView(false)}
+        />
       ) : null}
     </section>
   );

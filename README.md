@@ -116,7 +116,7 @@ Cambiar contraseña abre un modal con contraseña actual, nueva y confirmación;
 se mantienen este navegador y se cierran las demás sesiones de esa cuenta.
 No se guardan contraseñas en localStorage ni se pide la contraseña de otro usuario.
 
-El superadmin tiene Ver como… en el sidebar y en Mi cuenta. Elige una cuenta activa
+El superadmin y el administrador tienen Ver como… en el sidebar y en Mi cuenta. El superadmin elige cualquier cuenta activa; el administrador solo vendedores. Elige una cuenta activa
 y entra a una vista de solo lectura con un aviso permanente y Volver a mi cuenta.
 La sesión del superadmin permanece como autoridad y la contraseña del vendedor
 es independiente. Al entrar/salir se hace navegación completa para descartar
@@ -131,3 +131,19 @@ En Centro de cuentas, los administradores pueden crear vendedores, visitantes y
 administradores. El formulario ofrece solo roles permitidos y se abre en modal.
 Crear superadmins y editar cuentas de administración existentes queda reservado
 al superadmin. La vista Ver como sigue siendo de solo lectura.
+
+
+### Primer acceso y contraseñas temporales
+
+Las cuentas nuevas y las contraseñas restablecidas desde Centro de cuentas deben
+cambiar su contraseña temporal antes de usar el sistema. El login lleva a
+`/cambiar-contrasena`, con contraseña temporal, nueva y confirmación; no se puede
+omitir el paso y sí cerrar sesión. Proxy y API lo exigen incluso desde enlaces
+privados directos. La sesión se renueva al completar el cambio y no vuelve a
+pedirse en los siguientes accesos. La migración 021 conserva las cuentas existentes.
+
+Ver como… también está disponible para administradores sobre vendedores; el
+superadmin conserva acceso a las demás cuentas. El requisito del vendedor no
+bloquea al administrador que lo consulta, y la vista no puede cambiar su contraseña.
+El administrador debe haber completado su propio cambio obligatorio.
+Requiere desplegar frontend/API con la migración aditiva 021. Sin MySQL ni QA de navegador.

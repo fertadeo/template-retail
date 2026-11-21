@@ -304,6 +304,7 @@ export function AccountsPanel() {
                       }
                       autoComplete="new-password"
                     />
+                  <p className="text-xs text-muted-foreground">Si asignás una contraseña, el usuario deberá cambiarla al ingresar.</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="usr-role">Rol</Label>
