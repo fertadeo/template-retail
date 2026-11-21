@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DailySalesReport } from "@/components/daily-sales-report";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,29 +14,31 @@ export function SalesReportPanel() {
   // Fechas en useEffect: new Date() en render rompe el prerender (Cache Components).
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [canal, setCanal] = useState<"" | "pos" | "pedido" | "mayorista">("pos");
+  const [canal, setCanal] = useState<"" | "pos" | "pedido" | "mayorista">(
+    "pos",
+  );
   const { comercio } = useComercio();
   const scopeLabel = comercio?.nombre ?? "Venta local";
 
   useEffect(() => {
-    const d = new Date();
-    const today = d.toISOString().slice(0, 10);
-    const monthStart = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-    setFrom(monthStart);
-    setTo(today);
+    const timer = setTimeout(() => {
+      const d = new Date();
+      const today = d.toISOString().slice(0, 10);
+      const monthStart = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+      setFrom(monthStart);
+      setTo(today);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
-  const { data, loading, error, reload } = useRetailQuery(
-    () => {
-      if (!from || !to) return Promise.resolve([]);
-      return salesByVendor({
-        from,
-        to,
-        canal: canal || undefined,
-      });
-    },
-    [from, to, canal]
-  );
+  const { data, loading, error, reload } = useRetailQuery(() => {
+    if (!from || !to) return Promise.resolve([]);
+    return salesByVendor({
+      from,
+      to,
+      canal: canal || undefined,
+    });
+  }, [from, to, canal]);
   const rows = data ?? [];
   const total = rows.reduce((a, r) => a + r.total, 0);
   const tickets = rows.reduce((a, r) => a + r.tickets, 0);
@@ -47,14 +50,19 @@ export function SalesReportPanel() {
           Reportes
         </p>
         <h1 className="font-display text-3xl font-semibold tracking-tight text-charcoal">
-          Ventas por vendedor
+          Reportes de ventas
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Alcance actual: <span className="font-medium text-foreground">{scopeLabel}</span>.
+          Alcance actual:{" "}
+          <span className="font-medium text-foreground">{scopeLabel}</span>.
           Ventas de este local.
         </p>
       </div>
 
+      <DailySalesReport />
+      <h2 className="font-display text-xl font-semibold">
+        Ventas por vendedor
+      </h2>
       <div className="grid gap-3 rounded-xl bg-card/90 p-4 ring-1 ring-border/70 sm:grid-cols-4">
         <div className="space-y-1.5">
           <Label htmlFor="rep-from">Desde</Label>
@@ -131,10 +139,7 @@ export function SalesReportPanel() {
           <tbody>
             {loading ? (
               <tr>
-                <td
-                  colSpan={3}
-                  className="px-4 py-6 text-muted-foreground"
-                >
+                <td colSpan={3} className="px-4 py-6 text-muted-foreground">
                   Cargando…
                 </td>
               </tr>
@@ -154,10 +159,7 @@ export function SalesReportPanel() {
             ))}
             {!loading && rows.length === 0 ? (
               <tr>
-                <td
-                  colSpan={3}
-                  className="px-4 py-6 text-muted-foreground"
-                >
+                <td colSpan={3} className="px-4 py-6 text-muted-foreground">
                   Sin ventas en el período / alcance elegido.
                 </td>
               </tr>
