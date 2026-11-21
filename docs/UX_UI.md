@@ -91,3 +91,15 @@ en los botones. El perfil del usuario consultado también permanece de solo lect
 El primer acceso de cuentas nuevas o con contraseña restablecida usa un modal
 obligatorio sin cierre ni Cancelar, con salida explícita Cerrar sesión. No monta
 los proveedores privados del sistema antes de cambiar la contraseña.
+
+
+## Caja compartida y reportes diarios
+
+El POS muestra el estado de la caja del comercio antes de cobrar. Apertura y cierre
+usan modales con campos monetarios compartidos, foco contenido, acciones fijas,
+confirmación de descarte y bloqueo al guardar. Cero es válido y se muestra vacío
+con placeholder 0; no se normaliza el borrador mientras se escribe. El cierre
+compara efectivo esperado/contado, separa transferencias y muestra diferencias.
+Reportes incorpora ventas por día y CSV, además del historial de cierres y las
+ventas por vendedor existentes. Ver como conserva acceso de consulta y bloquea
+las operaciones reales en la API.

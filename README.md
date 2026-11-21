@@ -147,3 +147,31 @@ superadmin conserva acceso a las demás cuentas. El requisito del vendedor no
 bloquea al administrador que lo consulta, y la vista no puede cambiar su contraseña.
 El administrador debe haber completado su propio cambio obligatorio.
 Requiere desplegar frontend/API con la migración aditiva 021. Sin MySQL ni QA de navegador.
+
+
+## Apertura de caja y ventas por día
+
+POS tiene una caja compartida por comercio. Para cobrar debe existir una apertura,
+con monto inicial en efectivo y usuario autenticado. Solo puede haber una caja
+abierta por comercio. Las ventas POS se asocian a esa apertura en la misma
+transacción que registra el pedido; el operador se toma de la sesión del servidor.
+El botón de cobro se bloquea durante el envío para evitar clics duplicados.
+
+Quien abrió la caja o un administrador puede cerrarla indicando el efectivo
+contado y una observación. El resumen separa ventas en efectivo y transferencias;
+el esperado en efectivo es monto inicial + ventas en efectivo. El cierre guarda
+contado, esperado, diferencia, usuarios y tickets. Si entran nuevas ventas durante
+el conteo se exige revisar un resumen actualizado antes de confirmar. Se puede
+abrir otro turno después del cierre, incluso el mismo día. No hay cierre automático.
+
+Reportes incluye Ventas por día con fechas Desde/Hasta, efectivo, transferencias,
+importes sin medio de pago (históricos), tickets, total y CSV; conserva el reporte
+por vendedor. Solo cuenta ventas cobradas en POS, no fondos iniciales, pedidos
+pendientes de WhatsApp, borradores ni cancelados. Las monedas se muestran por
+separado y no se suman entre sí. También muestra el historial paginado de cierres.
+
+El día comercial usa UTC−3 por defecto; RETAIL_UTC_OFFSET_MINUTES en la API permite
+ajustarlo. Las nuevas operaciones se guardan en UTC. No se reescriben ventas
+históricas ni se inventan aperturas para ellas. El template demo conserva ventas
+en memoria pero no habilita aperturas/cierres o reportes reales sin la API.
+Requiere frontend/API coordinados y migración aditiva 022. Sin MySQL ni QA de navegador.

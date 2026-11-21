@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeftRight,
@@ -12,6 +12,11 @@ import {
   ShoppingBag,
   Truck,
 } from "lucide-react";
+import { useAccountSession } from "@/lib/account-session";
+import { isApiMode } from "@/lib/api-config";
+import { api } from "@/lib/api-client";
+import { useCatalogQuery } from "@/lib/use-catalog-query";
+import { CashRegisterPanel } from "@/components/cash-register-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,18 +49,47 @@ const selectClass = cn(
   "flex h-10 w-full appearance-none rounded-lg border border-white/12 bg-[#1a1714] px-3 text-sm text-[#f2eee6] outline-none",
   "focus-visible:ring-2 focus-visible:ring-teal/40 [color-scheme:dark]",
   "bg-[length:1rem] bg-[right_0.65rem_center] bg-no-repeat",
-  "bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23cfc6b8%22 stroke-width=%222.5%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')]"
+  "bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23cfc6b8%22 stroke-width=%222.5%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')]",
 );
 
 export function PosTerminal() {
+  const account = useAccountSession();
+  const canOperate =
+    account.demo ||
+    Boolean(
+      account.session &&
+        !account.session.actor &&
+        ["superadmin", "administrador", "vendedor"].includes(
+          account.session.user.role,
+        ),
+    );
+  const cash = useCatalogQuery(
+    ["pos-cash"],
+    (signal) => api.currentCash(signal),
+    0,
+    isApiMode(),
+  );
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const checkoutLock = useRef(false);
   const { comercio } = useComercio();
-  const { vendedorId, vendedor } =
-    useBranchScope();
-  const { data: clientData, error: clientsError } = useRetailQuery(() => listClients(), []);
+  const { vendedorId, vendedor } = useBranchScope();
+  const { data: clientData, error: clientsError } = useRetailQuery(
+    () => listClients(),
+    [],
+  );
   const clients = clientData ?? [];
   const [q, setQ] = useState("");
-  const { data: productPage, loading, error: loadError, page, setPage, reload: reloadProducts } = useProductPage({
-    q: q.trim(), pos: true, pageSize: 40,
+  const {
+    data: productPage,
+    loading,
+    error: loadError,
+    page,
+    setPage,
+    reload: reloadProducts,
+  } = useProductPage({
+    q: q.trim(),
+    pos: true,
+    pageSize: 40,
   });
   const products = productPage?.items ?? [];
   // Keep only selected products so changing search/page preserves ticket repricing.
@@ -87,10 +121,7 @@ export function PosTerminal() {
 
   const filtered = products;
 
-  const subtotal = cart.reduce(
-    (a, l) => a + l.cantidad * l.precioUnitario,
-    0
-  );
+  const subtotal = cart.reduce((a, l) => a + l.cantidad * l.precioUnitario, 0);
   const envioNum = conEnvio ? Math.max(0, Number(envioCosto) || 0) : 0;
   const total = subtotal + envioNum;
   const itemCount = cart.reduce((a, l) => a + l.cantidad, 0);
@@ -113,7 +144,7 @@ export function PosTerminal() {
         const p = cartProducts[l.productId];
         if (!p) return l;
         return { ...l, precioUnitario: productPrice(p, listId) };
-      })
+      }),
     );
   }
 
@@ -121,13 +152,13 @@ export function PosTerminal() {
     if (phase === "done") startNewSale();
     const p = products.find((x) => x.id === productId);
     if (!p) return;
-    setCartProducts(prev => ({ ...prev, [p.id]: p }));
+    setCartProducts((prev) => ({ ...prev, [p.id]: p }));
     const unit = productPrice(p, priceListId);
     setCart((prev) => {
       const existing = prev.find((l) => l.productId === p.id);
       if (existing) {
         return prev.map((l) =>
-          l.productId === p.id ? { ...l, cantidad: l.cantidad + 1 } : l
+          l.productId === p.id ? { ...l, cantidad: l.cantidad + 1 } : l,
         );
       }
       return [
@@ -150,9 +181,9 @@ export function PosTerminal() {
         .map((l) =>
           l.productId === productId
             ? { ...l, cantidad: l.cantidad + delta }
-            : l
+            : l,
         )
-        .filter((l) => l.cantidad > 0)
+        .filter((l) => l.cantidad > 0),
     );
   }
 
@@ -166,6 +197,17 @@ export function PosTerminal() {
   }
 
   async function checkout() {
+    if (checkoutLock.current) return;
+    if (!canOperate) {
+      setError("No tenés permiso para cobrar en esta vista.");
+      return;
+    }
+    if (isApiMode() && !cash.data?.session) {
+      setError("Abrí la caja antes de cobrar.");
+      return;
+    }
+    checkoutLock.current = true;
+    setCheckoutBusy(true);
     setError(null);
     setMessage(null);
     try {
@@ -179,13 +221,14 @@ export function PosTerminal() {
         metodoPago,
         vendedorId,
       });
+      cash.reload();
       setLastSale(sale);
       setCart([]);
       setCartProducts({});
       reloadProducts();
       setPhase("done");
       setMessage(
-        `Venta ${sale.folio} · ${listLabel} · ${formatMxn(orderTotal(sale))}`
+        `Venta ${sale.folio} · ${listLabel} · ${formatMxn(orderTotal(sale))}`,
       );
       if (sale.conEnvio) {
         // Diferir un tick: el click de cobrar sigue contando como gesto de usuario
@@ -197,13 +240,17 @@ export function PosTerminal() {
             setError(
               printErr instanceof Error
                 ? printErr.message
-                : "Venta OK. Usá «Imprimir ticket»."
+                : "Venta OK. Usá «Imprimir ticket».",
             );
           }
         }, 0);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cobrar.");
+      cash.reload();
+    } finally {
+      checkoutLock.current = false;
+      setCheckoutBusy(false);
     }
   }
 
@@ -213,14 +260,12 @@ export function PosTerminal() {
       printThermalTicket(lastSale);
       setError(null);
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "No se pudo abrir el ticket."
-      );
+      setError(e instanceof Error ? e.message : "No se pudo abrir el ticket.");
     }
   }
 
   return (
-    <div className="space-y-6">
+    <fieldset disabled={checkoutBusy} className="min-w-0 space-y-6">
       <div>
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Caja
@@ -232,19 +277,30 @@ export function PosTerminal() {
           Lista activa:{" "}
           <span className="font-medium text-teal">{listLabel}</span>
           {" · "}
-          Local: <span className="font-medium text-foreground">{comercio?.nombre ?? "—"}</span>
+          Local:{" "}
+          <span className="font-medium text-foreground">
+            {comercio?.nombre ?? "—"}
+          </span>
           {" · "}
           Operador:{" "}
           <span className="font-medium text-foreground">
-            {vendedor?.nombre ?? "Sin asignar"}
+            {account.session?.user.nombre ?? vendedor?.nombre ?? "Sin asignar"}
           </span>
           {conEnvio ? " · Con envío imprime ticket térmico 80 mm." : "."}
         </p>
       </div>
+      <CashRegisterPanel
+        session={cash.data?.session ?? null}
+        loading={cash.loading}
+        error={cash.error}
+        onRefresh={cash.reload}
+      />
       {loading ? (
         <p className="text-sm text-muted-foreground">Cargando productos…</p>
       ) : loadError || clientsError || priceError ? (
-        <p className="text-sm text-destructive">{loadError ?? clientsError ?? priceError}</p>
+        <p className="text-sm text-destructive">
+          {loadError ?? clientsError ?? priceError}
+        </p>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1.35fr_minmax(20rem,22rem)]">
@@ -255,9 +311,16 @@ export function PosTerminal() {
             placeholder="Buscar por código / SKU o nombre…"
             autoFocus
           />
-          <ProductPagination page={page} hasMore={productPage?.hasMore ?? false} loading={loading} onPage={setPage} />
+          <ProductPagination
+            page={page}
+            hasMore={productPage?.hasMore ?? false}
+            loading={loading}
+            onPage={setPage}
+          />
           {!loading && !loadError && !filtered.length ? (
-            <p className="text-sm text-muted-foreground">No se encontraron productos disponibles.</p>
+            <p className="text-sm text-muted-foreground">
+              No se encontraron productos disponibles.
+            </p>
           ) : null}
           <div className="grid max-h-[min(36rem,70vh)] gap-2 overflow-y-auto sm:grid-cols-2">
             {filtered.map((p) => (
@@ -405,7 +468,7 @@ export function PosTerminal() {
                           "flex h-9 items-center justify-center gap-1.5 rounded-md text-sm transition",
                           metodoPago === value
                             ? "bg-teal text-[#f2eee6] shadow-sm"
-                            : "text-sand/70 hover:bg-white/5 hover:text-[#f2eee6]"
+                            : "text-sand/70 hover:bg-white/5 hover:text-[#f2eee6]",
                         )}
                       >
                         <Icon className="size-3.5 opacity-80" />
@@ -426,14 +489,14 @@ export function PosTerminal() {
                     "flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition",
                     conEnvio
                       ? "border-teal/40 bg-teal/15"
-                      : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]"
+                      : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]",
                   )}
                 >
                   <span className="flex items-center gap-2 text-sm text-[#f2eee6]">
                     <Truck
                       className={cn(
                         "size-4",
-                        conEnvio ? "text-[#5eead4]" : "text-sand/50"
+                        conEnvio ? "text-[#5eead4]" : "text-sand/50",
                       )}
                     />
                     Pedido con envío
@@ -441,13 +504,13 @@ export function PosTerminal() {
                   <span
                     className={cn(
                       "relative h-5 w-9 rounded-full transition",
-                      conEnvio ? "bg-teal" : "bg-white/15"
+                      conEnvio ? "bg-teal" : "bg-white/15",
                     )}
                   >
                     <span
                       className={cn(
                         "absolute top-0.5 size-4 rounded-full bg-[#f2eee6] transition",
-                        conEnvio ? "left-4" : "left-0.5"
+                        conEnvio ? "left-4" : "left-0.5",
                       )}
                     />
                   </span>
@@ -602,10 +665,19 @@ export function PosTerminal() {
                 <Button
                   type="button"
                   className="h-11 w-full gap-2"
-                  disabled={!cart.length || loading || priceLoading}
+                  disabled={
+                    !cart.length ||
+                    loading ||
+                    priceLoading ||
+                    (isApiMode() && (cash.loading || !cash.data?.session)) ||
+                    checkoutBusy ||
+                    !canOperate
+                  }
                   onClick={() => void checkout()}
                 >
-                  {conEnvio ? (
+                  {checkoutBusy ? (
+                    "Cobrando…"
+                  ) : conEnvio ? (
                     <>
                       <Printer className="size-4" />
                       Cobrar e imprimir
@@ -619,6 +691,6 @@ export function PosTerminal() {
           )}
         </section>
       </div>
-    </div>
+    </fieldset>
   );
 }

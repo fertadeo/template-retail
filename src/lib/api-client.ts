@@ -144,6 +144,11 @@ function friendlyHttpError(status: number, body: string): string {
 }
 
 export const api = {
+  currentCash: (signal?:AbortSignal) => request<import("@/lib/cash").CashState>("/cash/current",{signal}),
+  openCash: (opening:number) => request<import("@/lib/cash").CashState>("/cash/open",{method:"POST",body:JSON.stringify({opening})}),
+  closeCash: (id:string,body:{counted:number;version:number;note:string}) => request<import("@/lib/cash").CashSession>(`/cash/${encodeURIComponent(id)}/close`,{method:"POST",body:JSON.stringify(body)}),
+  cashHistory: (page:number,signal?:AbortSignal) => request<import("@/lib/cash").CashHistory>(`/cash/history?page=${page}`,{signal}),
+  dailySales: (from:string,to:string,signal?:AbortSignal) => request<import("@/lib/cash").DailySales>(`/cash/daily-sales?${new URLSearchParams({from,to})}`,{signal}),
   getLocalBusiness: () => request<Comercio>("/business"),
   getSession: () => request<import("@/lib/account").AccountSession>("/auth/session"),
   getAccountProfile: () => request<import("@/lib/account").AccountProfile>("/auth/profile"),
